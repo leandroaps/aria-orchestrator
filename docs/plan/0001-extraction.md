@@ -196,6 +196,39 @@ Each phase ends green on `npm test` in aria before the next starts.
    `node ${CLAUDE_PLUGIN_ROOT}/bin/aria.mjs`.
 4. The `AskUserQuestion` hook payload shape the question hook relies on.
 
+Answers, checked on 2026-11-27 against the Claude Code docs (`hooks`,
+`hooks-guide`, `plugins-reference` at code.claude.com). P7 confirms them in
+a real session.
+
+1. **Both run, in parallel; order is not documented.** "When a plugin is
+   enabled, its hooks merge with your user and project hooks", and "its
+   matching hooks run in parallel". For `PreToolUse`, conflicting decisions
+   resolve as deny > defer > ask > allow, and a hook's `allow` never
+   overrides settings deny rules. Consequence for P4: no guard may rely on
+   running before or after another hook; each one decides on its own input,
+   and a deny from any of them wins.
+2. **Plugins ship workflows** in `workflows/` (manifest key `workflows`). No
+   `aria init` copy is needed for them. `.claude/workflows` itself is not
+   mentioned; the workflow page is read in P5.
+3. **`bin/` is on the Bash tool's `PATH`** while the plugin is enabled, so
+   Claude runs `aria` as a bare command. Hook commands get
+   `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PROJECT_DIR`; those
+   are not set for commands run through the Bash tool. Hooks call
+   `node "${CLAUDE_PLUGIN_ROOT}/bin/aria.mjs"`, never the bare name. `bin/`
+   blocks installation on claude.ai and Cowork, which v0.1 does not target.
+4. **`PreToolUse` input is documented:** `tool_input.questions[]` with
+   `question`, `header`, `options[{label, description}]`, `multiSelect`, and
+   an optional `answers` map (question text → label) that Claude can fill
+   so that no question is shown. `tool_use_id` comes with `PreToolUse` and
+   `PostToolUse`. **The `PostToolUse` `tool_response` for `AskUserQuestion`
+   is not documented.** bernardo-pet observed (Claude Code 2.1.302) that it
+   holds `{questions, answers, annotations}`, and that a model-filled
+   `answers` arrives there exactly like a click. So the question hook keeps
+   bernardo's design: `PreToolUse` denies any `tool_input` key besides
+   `questions` and writes a pre-check mark keyed by session and
+   `tool_use_id`; `PostToolUse` records an approval only when that mark
+   exists. P7 re-checks the response shape on the installed version.
+
 ## Out of scope for v0.1
 
 Stack profiles (backend/frontend/devops/sre), `agent-metrics`, the specs
