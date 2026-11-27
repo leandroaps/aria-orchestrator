@@ -473,7 +473,7 @@ function runSelect(ctx, [runId]) {
 
 function runObserve(ctx) {
 	const { head = null, checks = "unknown" } = ctx.options;
-	return runCommand(ctx, () => observeCommand(ctx.root, { head, checks }), (result) => [
+	return runCommand(ctx, () => observeCommand(ctx.root, { head, checks, pluginRoot: ctx.env.pluginRoot }), (result) => [
 		`${result.action}: ${result.reason}`,
 		...(result.dispatchable?.length > 0 ? [`Dispatchable: ${list(result.dispatchable)}.`] : []),
 	]);
@@ -553,7 +553,7 @@ function status(ctx, [given]) {
 		return 1;
 	}
 	const verbosity = ctx.options.debug ? "debug" : ctx.options.verbose ? "standard" : "minimal";
-	return runCommand(ctx, () => summaryCommand(ctx.root, { runId }), (summary) =>
+	return runCommand(ctx, () => summaryCommand(ctx.root, { runId, pluginRoot: ctx.env.pluginRoot }), (summary) =>
 		renderRunStatus(summary, {
 			theme: createTheme(ctx.terminal),
 			verbosity,

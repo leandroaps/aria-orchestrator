@@ -6,6 +6,7 @@
 //
 // Workers are supplied by the test, so a scenario can make one misbehave.
 
+import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -102,12 +103,15 @@ export function simulatedTeam(root, { worker }) {
 				approval_valid: summary.approval.valid,
 				approval_reasons: summary.approval.reasons,
 				dispatchable: summary.dispatchable,
-				tasks: summary.tasks.map(({ id, owner, state, reasons }) => ({ id, owner, state, reasons })),
+				tasks: summary.tasks.map(({ id, owner, agent_type, state, reasons }) => ({ id, owner, agent_type, state, reasons })),
 			};
 		}
 		if (kind === "spec") return { spec: exec(CONTROLLER, commandLines(prompt)[0]).json.spec };
 		if (kind === "gate") {
-			const command = lastLine(prompt);
+			// The line prints the exit code; an obedient model reads it back.
+			const line = lastLine(prompt);
+			const command = line.replace(/; echo "aria-exit-code=\$\?"$/, "");
+			assert.notEqual(command, line, "the gate prompt asks for the exit code");
 			return { command, exit_code: exec(CONTROLLER, command).code };
 		}
 		if (kind === "scope") {
@@ -115,7 +119,8 @@ export function simulatedTeam(root, { worker }) {
 			const base = git(["merge-base", "origin/HEAD", "HEAD"]);
 			const head = git(["rev-parse", "HEAD"]);
 			const files = git(["diff", "--name-only", base, head]).split("\n").filter(Boolean);
-			return { base, head, files };
+			const uncommitted = git(["status", "--porcelain"]).split("\n").filter(Boolean).map((line) => line.slice(3));
+			return { base, head, files, uncommitted };
 		}
 		if (kind === "accept") {
 			const file = prompt.match(/Write this exact JSON to (\S+)/)[1];

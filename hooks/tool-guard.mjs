@@ -305,6 +305,22 @@ const OPAQUE_OR_GIT_WRITE = [
 
 // Write targets visible in the command (a documented heuristic: the
 // comparison with the real change at `accept` decides).
+// The operands of `mkdir`: creating a directory a territory lives in (an
+// ancestor of a `dir/**` pattern) writes nothing the task could not write.
+export function mkdirTargets(fullCommand) {
+	const command = withoutHeredocBodies(fullCommand);
+	const targets = [];
+	for (const segment of command.split(/\|\||&&|;|\||\n/)) {
+		const [head, ...rest] = shellTokens(segment.trim());
+		if (head === "mkdir") targets.push(...rest.filter((token) => !token.startsWith("-")));
+	}
+	return targets;
+}
+
+function holdsTerritory(path, territory) {
+	return path !== null && territory.some((pattern) => !pattern.startsWith("!") && pattern.startsWith(`${path.replace(/\/+$/, "")}/`));
+}
+
 export function bashWriteTargets(fullCommand) {
 	const command = withoutHeredocBodies(fullCommand);
 	const targets = [];
@@ -512,8 +528,13 @@ export function decide(payload, { root }) {
 			}
 		}
 		const territory = actorTerritory(root, config, actor, tasks);
+		const directories = new Set(mkdirTargets(command));
 		for (const target of bashWriteTargets(command)) {
-			const problem = writeVerdict(canonicalPath(root, cwd, target), territory);
+			const resolved = canonicalPath(root, cwd, target);
+			if (directories.has(target) && holdsTerritory(resolved, territory) && !SENSITIVE_WRITE.some((pattern) => pattern.test(resolved))) {
+				continue;
+			}
+			const problem = writeVerdict(resolved, territory);
 			if (problem) return deny(`indirect write: ${problem}`);
 		}
 	}

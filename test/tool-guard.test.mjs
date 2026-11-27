@@ -197,6 +197,25 @@ test("a heredoc body is data, unless an interpreter runs it", (t) => {
 	]);
 });
 
+// Plan 0001 P7, round 2: the Lead's `mkdir -p .aria/handoffs` before writing
+// a handoff was denied, because the directory itself is not inside
+// `.aria/handoffs/**`. Creating a directory a territory lives in writes
+// nothing the task could not write; anything else stays denied.
+test("mkdir of the directory a territory lives in is allowed, and only that", (t) => {
+	const root = workspace(t);
+	startTask(root);
+	check(root, [
+		["the lead creates the handoffs directory", bash("mkdir -p .aria/handoffs"), false],
+		["the lead creates it, then writes a handoff by heredoc", bash("mkdir -p .aria/handoffs && cat > .aria/handoffs/x-T1.json <<'EOF'\n{}\nEOF"), false],
+		["a writer creates a directory above its territory", bash("mkdir -p src/lib", backend), false],
+		["a writer creates a directory inside its territory", bash("mkdir -p src/lib/new", backend), false],
+		["a writer creates a directory elsewhere", bash("mkdir -p src/app/x", backend), true],
+		["a writer creates a directory in .git", bash("mkdir -p .git/hooks", backend), true],
+		["touch on the territory's directory stays denied", bash("touch src/lib", backend), true],
+		["removing the directory a territory lives in stays denied", bash("rmdir src/lib", backend), true],
+	]);
+});
+
 // Claude Code names a plugin's agent `<plugin>:<agent>`. The plugin's own
 // agents keep their role; another plugin's agent of the same name does not.
 test("the plugin's agents keep their role under the plugin-scoped name", (t) => {
