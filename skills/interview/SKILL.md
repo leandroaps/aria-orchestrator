@@ -38,8 +38,9 @@ owner instead of guessing.
 
 ## Language
 
-Talk to the owner in the language of `locale` in `aria.config.json` (`en`
-or `pt-BR`), explaining a technical term the first time it appears.
+Talk to the owner in English, explaining a technical term the first time it
+appears. Use another language only when the owner asks for it, in the
+conversation or by setting `locale` in `aria.config.json` (`pt-BR`).
 
 ## Process
 

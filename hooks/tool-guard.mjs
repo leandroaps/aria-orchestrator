@@ -29,7 +29,7 @@ import { pathToFileURL } from "node:url";
 import { REGISTRY_DIR, resolveCommonDir } from "../lib/approval-registry.mjs";
 import { STATE_DIR, loadConfig } from "../lib/config.mjs";
 import { buildExecutionGraph, pathFitsTerritory } from "../lib/execution-graph.mjs";
-import { shellTokens } from "../lib/shell-tokens.mjs";
+import { shellTokens, withoutHeredocBodies } from "../lib/shell-tokens.mjs";
 
 const WRITE_TOOLS = ["Write", "Edit", "MultiEdit", "NotebookEdit"];
 // Agents of the workflow control steps (and the generic ones of the manual
@@ -271,7 +271,14 @@ export function opaqueNodeInvocation(command) {
 		if (!/(^|\/)node(js)?$/.test(tokens[start] ?? "")) continue;
 		const options = [];
 		let script = null;
+		let stdin = false;
 		for (const token of tokens.slice(start + 1)) {
+			// `< file` and `<<EOF` feed the program on stdin; they are not its
+			// script (plan 0001 P7).
+			if (/^<(?!\()/.test(token)) {
+				stdin = true;
+				break;
+			}
 			if (token === "-" || !token.startsWith("-")) {
 				script = token;
 				break;
@@ -279,7 +286,7 @@ export function opaqueNodeInvocation(command) {
 			options.push(token);
 		}
 		if (script === "-" || options.some((token) => NODE_INLINE_FLAG.test(token))) return true;
-		if (script === null && (piped || /<(?!\()/.test(parts[index]))) return true;
+		if (script === null && (piped || stdin || /<(?!\()/.test(parts[index]))) return true;
 	}
 	return false;
 }
@@ -298,7 +305,8 @@ const OPAQUE_OR_GIT_WRITE = [
 
 // Write targets visible in the command (a documented heuristic: the
 // comparison with the real change at `accept` decides).
-export function bashWriteTargets(command) {
+export function bashWriteTargets(fullCommand) {
+	const command = withoutHeredocBodies(fullCommand);
 	const targets = [];
 	for (const match of command.matchAll(/(?:^|[^<>&\d])(?:\d?>>?|&>)\s*([^\s;&|<>]+)/g)) targets.push(match[1]);
 	for (const segment of command.split(/\|\||&&|;|\|/)) {

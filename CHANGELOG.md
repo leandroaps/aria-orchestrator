@@ -81,6 +81,14 @@
   write around the guard is refused by `accept` until the third identical
   defect blocks the run. `aria-plan` no longer repeats an impact problem
   once per task. Phase P6 is done.
+- First real validation (plan 0001, phase P7), in
+  `docs/validation/0001.md`. Fixes from it:
+  - `bin/aria`, so `aria` runs as a bare command from the plugin's `bin/`;
+  - the tool guard no longer reads a heredoc's body as shell, unless an
+    interpreter runs it, and treats `node < file` and `node <<EOF` as opaque
+    `node`;
+  - English is the stated default everywhere; `locale: pt-BR` only on
+    request.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;

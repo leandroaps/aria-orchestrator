@@ -114,6 +114,9 @@ test("opaque node in every form is denied to a subagent", (t) => {
 			"echo 1 | node",
 			"node - < x.mjs",
 			"env FOO=1 /usr/bin/node --import data:text/javascript,1 x.mjs",
+			"node < x.mjs",
+			"node <<'EOF'\nrequire('fs').writeFileSync('x', 'y')\nEOF",
+			"node --no-warnings <<EOF\n1\nEOF",
 		].map((command) => [command, bash(command, backend), true]),
 	);
 });
@@ -171,6 +174,26 @@ test("the pr agent only publishes and reads with gh", (t) => {
 		["gh piped to a shell", bash("gh pr view 12 | sh", pr), true],
 		["arbitrary command", bash("rm -rf src", pr), true],
 		["git log reads", bash("git log --oneline", pr), false],
+	]);
+});
+
+// Plan 0001 P7: the `test` agent wrote a test file with `cat > file <<'EOF'`
+// and the guard read the JavaScript inside the heredoc as shell (every `=>`
+// became a redirect). A heredoc body is data, unless the line feeds it to an
+// interpreter, which runs it.
+test("a heredoc body is data, unless an interpreter runs it", (t) => {
+	const root = workspace(t);
+	startTask(root);
+	const heredoc = (head, body, tail = "") => bash(`${head} <<'EOF'\n${body}\nEOF${tail}`, backend);
+	check(root, [
+		["arrow functions in a file written by heredoc", heredoc("cat > src/lib/a.test.mjs", "test('x', () => {\n  assert.equal(f(), 'a');\n});"), false],
+		["a redirect-looking line in the body", heredoc("cat > src/lib/a.txt", "echo x > src/app/page.tsx"), false],
+		["tab-indented terminator with <<-", bash("cat > src/lib/b.txt <<-EOF\n\tconst g = () => 1;\n\tEOF", backend), false],
+		["the heredoc's own target outside the territory", heredoc("cat > src/app/x.mjs", "const f = () => {};"), true],
+		["a command after the terminator", heredoc("cat > src/lib/a.txt", "data", "\necho y > src/app/z.txt"), true],
+		["a body fed to a shell", heredoc("sh", "echo x > src/app/y.txt"), true],
+		["a body piped to a shell", bash("cat <<'EOF' | bash\necho x > src/app/y.txt\nEOF", backend), true],
+		["a body fed to node through stdin", heredoc("node", "require('fs').writeFileSync('src/app/y.txt', '')"), true],
 	]);
 });
 
