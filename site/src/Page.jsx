@@ -32,7 +32,6 @@ function Controls({ locale, locales, t }) {
 			<button
 				type="button"
 				id="theme-toggle"
-				aria-pressed="false"
 				data-label-light={t.controls.themeToLight}
 				data-label-dark={t.controls.themeToDark}
 			>

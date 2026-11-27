@@ -46,11 +46,22 @@ test("status rows match status.json, with the state as word and symbol", () => {
 		rows.map((row) => row[1]),
 		status.phases.map((phase) => phase.state),
 	);
-	assert.match(rows[3][0], /→[\s\S]*CLI[\s\S]*In progress/);
-	assert.match(rows[0][0], /✓[\s\S]*Scaffold[\s\S]*Done/);
-	assert.equal(rows.filter((row) => row[0].includes("→")).length, 1);
-	const pt = section(page({ locale: "pt-BR" }), "status");
+	// Expectations come from status.json, so updating a phase never needs a
+	// test change here.
+	const symbols = { done: "✓", "in-progress": "→", next: "○" };
+	const words = { done: "Done", "in-progress": "In progress", next: "Next" };
+	status.phases.forEach(({ id, title, state }, index) => {
+		const row = rows[index][0];
+		for (const text of [symbols[state], id, title, words[state]]) assert.ok(row.includes(text), `${id}: ${text}`);
+	});
+	const inProgress = status.phases.filter((phase) => phase.state === "in-progress").length;
+	assert.equal(rows.filter((row) => row[0].includes("→")).length, inProgress);
+});
+
+test("status words are translated", () => {
+	const pt = section(page({ locale: "pt-BR", status: { phases: [{ id: "P3", state: "in-progress" }] } }), "status");
 	assert.ok(pt.includes("Em andamento"));
+	assert.ok(pt.includes("CLI"));
 });
 
 test("releases: empty state, rows with a localized date, prerelease label", () => {
@@ -122,4 +133,13 @@ test("footer has the author mark and the locale's text", () => {
 test("only the logo is preloaded, not the footer image", () => {
 	const preloads = [...page().matchAll(/<link rel="preload"[^>]*>/g)].map((match) => match[0]);
 	assert.deepEqual(preloads, ['<link rel="preload" as="image" href="/aria-mark.svg"/>']);
+});
+
+test("the theme button names the action and has no pressed state", () => {
+	// The label already says what a click does ("Dark theme" while light is
+	// showing); aria-pressed on top of it would contradict the label.
+	const html = page();
+	const button = html.match(/<button[^>]*id="theme-toggle"[^>]*>/)[0];
+	assert.doesNotMatch(button, /aria-pressed/);
+	assert.doesNotMatch(html.match(/<script>([\s\S]*?)<\/script>/)[1], /aria-pressed/);
 });

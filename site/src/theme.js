@@ -17,9 +17,8 @@
 		const button = document.getElementById("theme-toggle");
 		if (!button) return;
 		const sync = () => {
-			const light = current() === "light";
-			button.setAttribute("aria-pressed", String(light));
-			button.textContent = light ? button.dataset.labelDark : button.dataset.labelLight;
+			// The label names the action: the theme a click switches to.
+			button.textContent = current() === "light" ? button.dataset.labelDark : button.dataset.labelLight;
 		};
 		button.addEventListener("click", () => {
 			root.dataset.theme = current() === "light" ? "dark" : "light";
