@@ -54,7 +54,8 @@
     by `.github/workflows/site.yml` on pushes to `main` and on published
     releases.
 
-  GitHub Pages no longer deploys on push.
+  GitHub Pages is retired: its workflow is removed and the repository
+  homepage points at the new domain.
 - Brand identity (plan 0002, phase B1): approved logo and its vector,
   monogram, favicon, app and Open Graph variants; `brand-tokens.json`
   (colours, status colours and symbols with ASCII fallbacks, fonts, copy);
