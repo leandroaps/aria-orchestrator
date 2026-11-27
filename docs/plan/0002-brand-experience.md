@@ -50,5 +50,6 @@ it, so progress on screen always comes from real state. Plan 0001's layout
 
 The GitHub avatar (account or the farofino-bot app) is uploaded by hand
 from `assets/brand/aria-icon.png` (768 px, about 0.5 MB, under the 1 MB
-limit). The landing page is served by GitHub Pages from `site/`; no custom
-domain.
+limit). The project page is built from `site/` and served by a Cloudflare
+Worker at https://aria-orchestrator.dev (`www` redirects to it). GitHub
+Pages is retired.
