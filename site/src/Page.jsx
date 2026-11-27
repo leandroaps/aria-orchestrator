@@ -47,6 +47,7 @@ function Signature() {
 			<img className="logo" src="/aria-mark.svg" width="480" height="432" alt="ARIA — Agentic SDLC Orchestrator" />
 			<div className="signature">
 				<h1>ARIA</h1>
+				<p className="expansion">Agentic Reasoning and Intelligent Automation</p>
 				<p className="descriptor">Agentic SDLC Orchestrator</p>
 				<p className="slogan">Complexity orchestrated.</p>
 				<p className="slogan">Simplicity delivered.</p>

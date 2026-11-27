@@ -175,9 +175,13 @@ controls, not a sandbox: `aria run accept` still compares the real change.
 | `tool-guard.mjs` | `PreToolUse` on writes, Bash and MCP; `Stop` | Keeps the approval registry and `.git` out of reach, keeps subagents out of run state, and during a task limits each agent to its territory; read-only agents only read. `Stop` asks once to accept or fail a running task |
 | `push-gate.mjs` | `PreToolUse` on Bash | Before `git push` of a branch, runs `aria gate` on the pushed worktree: config, changed specs and their graphs, required reviewers |
 
-`aria gate` runs the same checks by hand. The approval question's text
-follows `locale` in `aria.config.json` (`en` or `pt-BR`); `aria run plan`
-gives it as `approval_question`.
+`aria gate` runs the same checks by hand.
+
+Everything the plugin shows is in English: commands, skills, agents and the
+approval question. Another language is used only when the project asks for
+it: `"locale": "pt-BR"` in `aria.config.json` switches the approval question
+to Brazilian Portuguese. `aria run plan` gives the question as
+`approval_question`.
 
 ## Development
 

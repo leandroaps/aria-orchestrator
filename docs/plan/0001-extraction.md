@@ -240,6 +240,15 @@ Each phase ends green on `npm test` in aria before the next starts.
 - **P7 — Real validation.** Install the plugin from the local marketplace in a
   throwaway repo and run one real spec with Claude Code; record what broke in
   `docs/validation/0001.md`. v0.1.0 is tagged only after this.
+  First run on 2026-11-27, recorded in `docs/validation/0001.md`: the
+  manual protocol ran a two-task spec end to end, approved by the owner's
+  click. It answered that a plugin agent's `agent_type` is plugin-scoped,
+  and confirmed the `AskUserQuestion` response shape. It broke on `aria`
+  not being a command (`bin/aria` added) and on the tool guard reading a
+  heredoc body as shell (fixed, with a stdin gap for `node` found and fixed
+  on the way). The session offered no Workflow tool, so the workflows did
+  not run live; P7 stays open until a second run covers them and confirms
+  `aria` on the PATH.
 - **P8 — Bernardo migration (separate, later).** A high-impact spec in
   `bernardo-pet` (security twice, owner click) swaps its scripts for the
   plugin and keeps only config and stack agents. Not part of this plan.

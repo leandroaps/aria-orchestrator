@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -187,4 +188,17 @@ test("scope and classify", (t) => {
 	const badRef = aria(["scope", "--base", "nope", "--head", "HEAD", "--json"], root);
 	assert.equal(badRef.code, 1);
 	assert.match(JSON.parse(badRef.stdout).problems[0], /refusing to assume an empty change set/);
+});
+
+// Plan 0001 P7: Claude Code puts the plugin's `bin/` on the Bash PATH, and the
+// skills run `aria …` as a bare command. Without an executable named `aria`
+// the command was not found.
+test("bin/aria is an executable that runs the CLI", () => {
+	const shim = join(import.meta.dirname, "..", "bin", "aria");
+	assert.ok(statSync(shim).mode & 0o111, "bin/aria is executable");
+	const result = spawnSync(shim, ["--help"], { encoding: "utf8" });
+	assert.equal(result.status, 0, result.stderr);
+	assert.match(result.stdout, /^Usage: aria <command>/);
+	const fromElsewhere = spawnSync(shim, ["validate", "config", "--json"], { cwd: tmpdir(), encoding: "utf8" });
+	assert.notEqual(fromElsewhere.status, 127, fromElsewhere.stderr);
 });

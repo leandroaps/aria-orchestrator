@@ -1,0 +1,5 @@
+#!/bin/sh
+# `aria` as a bare command. Claude Code puts a plugin's bin/ on the Bash
+# PATH, and the skills and workflows run `aria …`; the CLI itself is
+# aria.mjs, next to this file.
+exec node "$(dirname "$0")/aria.mjs" "$@"
