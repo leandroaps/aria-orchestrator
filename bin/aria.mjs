@@ -24,10 +24,14 @@ import {
 	recordApprovalCommand,
 	recoverLockCommand,
 	resumeCommand,
+	latestRunId,
 	startCommand,
 	statusCommand,
+	summaryCommand,
 	verifyCommand,
 } from "../lib/run-controller.mjs";
+import { renderRunStatus } from "../lib/experience/run-status.mjs";
+import { createTheme, detectTerminal } from "../lib/experience/terminal.mjs";
 import { compareHandoffToDelta, hardenedGit, snapshotTree, treeDelta } from "../lib/run-evidence.mjs";
 import { DEFECT_CATEGORIES, LOCK_KEY_PATTERN } from "../lib/run-state.mjs";
 import {
@@ -54,6 +58,11 @@ Commands:
            [--files <list.json>]        ...from a JSON list of files instead
            [--manual <reviewers.json>]  ...plus {"required": [...]} from the spec
 
+Status:
+  status [<run-id>]                     A run at a glance and its next step
+                                        (default: the most recent run)
+           [--verbose | --debug]        ...every task, or also digests and paths
+
 Run commands (one orchestration run of a spec):
   run create <spec>                     Create a run from the spec's plan
   run plan <run-id>                     Present the plan for the owner's approval
@@ -74,6 +83,7 @@ Options:
   --root <dir>      Repository root (default: the git top level of the
                     current directory)
   --json            Machine-readable output, no colour or decoration
+                    (colour follows NO_COLOR, FORCE_COLOR and the terminal)
   -h, --help        Show this help
 
 Exit codes: 0 ok, 1 findings, 2 usage error.`;
@@ -456,6 +466,25 @@ function runCancel(ctx, [runId]) {
 	);
 }
 
+// --- Status ------------------------------------------------------------------------
+
+function status(ctx, [given]) {
+	const runId = given ?? latestRunId(ctx.root);
+	if (!runId) {
+		ctx.out.stderr('aria status: no runs yet in this repository; start one with "aria run create <spec>"');
+		return 1;
+	}
+	const verbosity = ctx.options.debug ? "debug" : ctx.options.verbose ? "standard" : "minimal";
+	return runCommand(ctx, () => summaryCommand(ctx.root, { runId }), (summary) =>
+		renderRunStatus(summary, {
+			theme: createTheme(ctx.terminal),
+			verbosity,
+			terminal: ctx.terminal,
+			runDir: `.aria/runs/${runId}`,
+		}),
+	);
+}
+
 // `args`: positional names, `?` marks an optional one. `options`: the
 // command-specific flags it accepts.
 const COMMANDS = {
@@ -466,6 +495,7 @@ const COMMANDS = {
 	"validate run": { run: validateRun, args: ["run-id?"] },
 	scope: { run: scope, args: [], options: ["base", "head"], requires: ["base", "head"] },
 	classify: { run: classify, args: [], options: ["base", "head", "files", "manual"] },
+	status: { run: status, args: ["run-id?"], options: ["verbose", "debug"] },
 	"run create": { run: runCreate, args: ["spec"] },
 	"run plan": { run: runPlan, args: ["run-id"] },
 	"run status": { run: runStatus, args: ["run-id"] },
@@ -498,6 +528,8 @@ const OPTIONS = {
 	repro: { type: "string" },
 	requirement: { type: "string" },
 	reason: { type: "string" },
+	verbose: { type: "boolean", short: "v" },
+	debug: { type: "boolean" },
 };
 
 // Identifiers that become paths or lock names are checked before any use.
@@ -534,10 +566,11 @@ function checkUsage(name, command, rest, values) {
 	for (const option of command.requires ?? []) {
 		if (!values[option]) throw new UsageError(`${name}: --${option} is required`);
 	}
-	// Run commands act on what they name. `validate run` only inspects, and
-	// reports a malformed run id as a finding instead.
+	// Run commands and `status` act on what they name. `validate run` only
+	// inspects, and reports a malformed run id as a finding instead.
+	const actsOnIds = name.startsWith("run ") || name === "status";
 	command.args.forEach((arg, index) => {
-		const [pattern, expected] = name.startsWith("run ") ? (ARG_PATTERNS[arg] ?? []) : [];
+		const [pattern, expected] = actsOnIds ? (ARG_PATTERNS[arg.replace(/\?$/, "")] ?? []) : [];
 		if (pattern && rest[index] !== undefined && !pattern.test(rest[index])) {
 			throw new UsageError(`${name}: "${rest[index]}" is not ${expected}`);
 		}
@@ -571,12 +604,17 @@ function gitTopLevel(cwd) {
 // events approve a plan.
 const PLUGIN_ROOT = join(import.meta.dirname, "..");
 
-// `env` exists for in-process tests: the working directory, and a plugin
-// root with a question hook they know. The binary never passes it.
+// `env` exists for in-process tests: the working directory, a plugin root
+// with a question hook they know, and the terminal to render for. The
+// binary never passes it.
 export function main(
 	argv,
 	out = { stdout: console.log, stderr: console.error },
-	{ cwd = process.cwd(), pluginRoot = PLUGIN_ROOT } = {},
+	{
+		cwd = process.cwd(),
+		pluginRoot = PLUGIN_ROOT,
+		terminal = { env: process.env, isTTY: process.stdout.isTTY, platform: process.platform },
+	} = {},
 ) {
 	// Inherited GIT_DIR and the like never choose the repository.
 	scrubGitLocationEnv();
@@ -605,6 +643,8 @@ export function main(
 		cwd,
 		command: found.name,
 		env: { pluginRoot },
+		// `--json` never carries colour, whatever the terminal says.
+		terminal: values.json ? { color: false, truecolor: false, unicode: true } : detectTerminal(terminal),
 		json: values.json,
 		options: values,
 		out,

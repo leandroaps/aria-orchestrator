@@ -97,6 +97,16 @@ the config.
 
 ### Runs
 
+`aria status [<run-id>]` shows a run at a glance: its state, the approval,
+the tasks that need attention, the last failure and the next command to
+run. Without a run id it shows the most recent run. `--verbose` lists every
+task and `--debug` adds the plan digest and paths. A pending or voided
+approval and failures show at every level. Colour and symbols come from the
+brand tokens; colour follows `NO_COLOR`, `FORCE_COLOR` and whether the
+output is a terminal, symbols fall back to ASCII where Unicode is not safe,
+and `--json` output never carries an escape code.
+
+
 `aria run <command>` drives one orchestration run of a spec. Its state lives
 in `.aria/runs/<run-id>/`; locks and approval events live in the git common
 dir, so every worktree sees them.

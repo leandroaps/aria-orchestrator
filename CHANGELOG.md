@@ -37,6 +37,13 @@
   exit 1 on a refusal. Run ids, task ids, lock keys and defect categories
   are checked before use. An approval counts only when the plugin's own
   question hook wrote the event.
+- Terminal layer and `aria status` (plan 0001 P3.2b, plan 0002 B2):
+  `lib/experience/` turns the brand tokens into ANSI (true colour when the
+  terminal says so, else the nearest basic colour), detects colour
+  (`NO_COLOR`, `FORCE_COLOR`, TTY, CI, `TERM=dumb`) and Unicode (ASCII on
+  the Linux console and the legacy Windows console), and has three
+  verbosity levels. `aria status [<run-id>]` summarises a run with its next
+  step. `--json` never carries an escape code. Phase P3 is done.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;
