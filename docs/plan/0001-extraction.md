@@ -148,14 +148,26 @@ Each phase ends green on `npm test` in aria before the next starts.
   the engine self-tests to `node:test`.
 - **P2 — Config.** JSON Schema, loader with clear errors, starter template,
   `aria validate config`.
-- **P3 — CLI.** `bin/aria.mjs` with subcommands mapping today's
-  `agent-run` commands plus `validate {spec,graph,handoff,run,contracts}`,
-  `scope`, `classify`, `gate`.
-- **P4 — Hooks.** Tool guard, question hook, prompt hook, push gate wired in
-  `hooks/hooks.json`; approval label from `locales/`. Port the tool-guard
+- **P3 — CLI.** `bin/aria.mjs`, in two pull requests:
+  - **P3.1** — `validate {spec,graph,handoff,run}`, `scope`, `classify`.
+    The checks live in `lib/validate.mjs` and `lib/impact.mjs`, so hooks and
+    the run controller call the same code.
+  - **P3.2** — the run commands that map today's `agent-run` (`create`,
+    `plan`, `status`, `record-approval`, `start`, `verify`, `accept`,
+    `ready`, `fail`, `resume`, `recover-lock`, `cancel`), with the terminal
+    layer of plan 0002 (B2) for `aria status`.
+  - Each part moves to the phase that builds what it reads. `validate
+    contracts` checks agents and skills, so it moves to P5. `gate` is the
+    pre-push gate a hook triggers, so it moves to P4. So do
+    `check-workflows`, `select` and `observe`, which read the workflows,
+    to P5.
+- **P4 — Hooks.** Tool guard, question hook, prompt hook, push gate (with
+  `aria gate`) wired in `hooks/hooks.json`; approval label from `locales/`. Port the tool-guard
   self-tests (with neutral paths) to `node:test`.
 - **P5 — Skills, agents, workflows.** Translate and generalize the process
-  skills and the five core agents; rename workflows; spec templates.
+  skills and the five core agents; rename workflows; spec templates;
+  `aria validate contracts` and the workflow commands (`check-workflows`,
+  `select`, `observe`).
 - **P6 — End-to-end test.** A fixture repo created in a temp dir runs a full
   run: plan → approval → dispatch → accept → review, asserting the guards
   block out-of-territory writes and unapproved runs.

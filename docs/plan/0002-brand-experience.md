@@ -25,7 +25,7 @@ it, so progress on screen always comes from real state. Plan 0001's layout
   `docs/brand/identity.md`; README header; plugin icon; static landing page
   in `site/`. Tests keep the tokens valid and the site copies equal to their
   sources.
-- **B2 — Terminal layer (with plan 0001 P3, the CLI).** `lib/experience/`:
+- **B2 — Terminal layer (with plan 0001 P3.2, the run commands).** `lib/experience/`:
   tokens → ANSI, colour detection (`NO_COLOR`, `FORCE_COLOR`, TTY, CI,
   Windows/WSL), Unicode/ASCII symbols, verbosity levels (minimal default,
   standard, debug), and a guarantee that `--json` output carries no banner

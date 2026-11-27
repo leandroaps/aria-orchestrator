@@ -72,6 +72,28 @@ node bin/aria.mjs validate config --json   # for scripts and CI
 
 Exit codes: 0 valid, 1 invalid, 2 usage error.
 
+## Command line
+
+`node bin/aria.mjs --help` lists every command. All of them are read-only,
+take `--root` (default: the git top level of the current directory) and
+`--json`, and exit 0 when clean, 1 on findings, 2 on a usage error.
+
+| Command | Checks |
+|---|---|
+| `validate config` | `aria.config.json` |
+| `validate spec [<spec>]` | Spec IDs and status agree; every task cites requirements that exist; every requirement is covered |
+| `validate graph <spec>` | Owners, dependencies, cycles, territories, and parallel tasks that write the same paths |
+| `validate handoff <spec> <file> [--base <ref>]` | A worker's handoff: shape, owner, territory, and with `--base`, the real change |
+| `validate run [<run-id>]` | A run's manifest, events and approval provenance |
+| `scope --base <ref> --head <ref>` | Files and specs a change touches, and whether governance files changed |
+| `classify (--base/--head \| --files <json>) [--manual <json>]` | Reviews the change requires or recommends, with the reason for each |
+
+Changes to the files that govern the orchestration (`aria.config.json`,
+`.claude/` settings, agents, skills and workflows, `CLAUDE.md`, `AGENTS.md`,
+CI workflows, `CODEOWNERS`, `package.json`) always require the `security`
+reviewer. That list lives in code, so a change cannot remove it by editing
+the config.
+
 ## Development
 
 ```bash
