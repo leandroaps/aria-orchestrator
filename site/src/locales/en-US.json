@@ -1,0 +1,46 @@
+{
+  "description": "ARIA simplifies the software development lifecycle through intelligent multi-agent orchestration.",
+  "install": {
+    "title": "Install",
+    "intro": "In Claude Code:",
+    "prealpha": "Pre-alpha: not usable yet. v0.1.0 is tagged after real validation.",
+    "latest": "Latest release: {tag}.",
+    "config": "Configure a repository"
+  },
+  "status": {
+    "title": "Status",
+    "states": {
+      "done": "Done",
+      "in-progress": "In progress",
+      "next": "Next"
+    },
+    "phases": {
+      "P0": "Scaffold",
+      "P1": "Engine",
+      "P2": "Config",
+      "P3": "CLI",
+      "P4": "Hooks",
+      "P5": "Skills, agents, workflows",
+      "P6": "End-to-end test",
+      "P7": "Real validation",
+      "P8": "Bernardo migration (separate, later)"
+    },
+    "plan": "Read the plan"
+  },
+  "releases": {
+    "title": "Releases",
+    "empty": "No release yet. See the status above.",
+    "prerelease": "pre-release",
+    "all": "All releases"
+  },
+  "footer": {
+    "repository": "Repository",
+    "license": "MIT License",
+    "author": "Designed and built with ❤️ by Leandro Aparecido de Siqueira. All rights reserved."
+  },
+  "controls": {
+    "language": "Language",
+    "themeToLight": "Light theme",
+    "themeToDark": "Dark theme"
+  }
+}

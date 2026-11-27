@@ -17,6 +17,7 @@ export function loadTokens(path) {
 		midnight: color.midnight.value,
 		snow: color.snow.value,
 		violet: color.violet.value,
+		lavender: color.lavender.value,
 		muted: color.muted.value,
 	};
 }

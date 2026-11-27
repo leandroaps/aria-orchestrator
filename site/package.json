@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "vite build --ssr src/render.jsx --outDir dist-ssr && node scripts/build.mjs",
+    "pretest": "npm run build",
     "test": "node --test \"test/**/*.test.mjs\"",
     "deploy": "wrangler deploy"
   },

@@ -92,6 +92,7 @@ test("loadStatus and loadTokens read the repository's files", () => {
 		midnight: "#0B1020",
 		snow: "#F8FAFC",
 		violet: "#7C3AED",
+		lavender: "#A78BFA",
 		muted: "#94A3B8",
 	});
 });
