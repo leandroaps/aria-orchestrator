@@ -17,9 +17,6 @@ const NODE_MAJOR = 24;
 const NODE24_ACTIONS = {
 	"actions/checkout": 5,
 	"actions/setup-node": 5,
-	"actions/configure-pages": 6,
-	"actions/upload-pages-artifact": 5,
-	"actions/deploy-pages": 5,
 };
 
 const workflows = readdirSync(path(".github/workflows"))
