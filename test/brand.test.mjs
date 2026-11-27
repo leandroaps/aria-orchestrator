@@ -81,7 +81,7 @@ test("site raster icons have the declared sizes", () => {
 	assert.deepEqual(pngSize("site/og-image.png"), { width: 1200, height: 630 });
 });
 
-test("landing page: metadata, logo only, no external request", () => {
+test("landing page: metadata, logo and signature, no external request", () => {
 	assert.match(page, /<title>ARIA - Agentic SDLC Orchestrator<\/title>/);
 	assert.match(
 		page,
@@ -89,8 +89,15 @@ test("landing page: metadata, logo only, no external request", () => {
 	);
 	assert.match(page, /name="theme-color" content="#0B1020"/);
 	assert.match(page, /<img class="logo" src="aria-mark\.svg"[^>]* alt="[^"]+"/);
-	// The signature exists but is off by default.
-	assert.match(page, /<body data-signature="off">/);
+	// Logo, then the signature: name and first slogan line in Snow,
+	// descriptor and second line in Violet.
+	assert.match(
+		page,
+		/<img class="logo"[^>]*>\s*<div class="signature">\s*<h1>ARIA<\/h1>\s*<p class="descriptor">Agentic SDLC Orchestrator<\/p>\s*<p class="slogan">Complexity orchestrated\.<\/p>\s*<p class="slogan">Simplicity delivered\.<\/p>/,
+	);
+	assert.match(page, new RegExp(`--violet: ${tokens.color.violet.value};`));
+	assert.match(page, new RegExp(`--snow: ${tokens.color.snow.value};`));
+	assert.doesNotMatch(page, /data-signature/);
 	assert.doesNotMatch(page, /<script|<nav|<header|<footer|<form|<button/i);
 	assert.doesNotMatch(page, /(src|href)="(https?:)?\/\//i, "no external request");
 	assert.match(page, /prefers-reduced-motion: no-preference/);

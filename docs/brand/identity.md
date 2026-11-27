@@ -95,10 +95,19 @@ the underlying model or provider.
 ## Landing page
 
 `site/` is a static page (HTML and CSS, no framework, no external request,
-no tracking) that shows only the mark, centred on Midnight. A brand
-signature (name, descriptor, slogan) is built in and hidden; set
-`data-signature="on"` on `<body>` to show it. The only motion is a fade on
-first load, skipped under `prefers-reduced-motion`.
+no tracking) centred on Midnight: the mark, and below it the signature.
+
+| Line | Colour |
+|---|---|
+| `A R I A` (the name, letter-spaced) | Snow |
+| `AGENTIC SDLC ORCHESTRATOR` | Violet |
+| `Complexity orchestrated.` | Snow |
+| `Simplicity delivered.` | Violet |
+
+Violet on Midnight has a 3.3:1 contrast, which WCAG AA accepts only for
+large text, so the violet lines stay at 19.2 px with weight 600 or larger.
+Headings stay modest: the name is 28 px. The only motion is a fade on first
+load, skipped under `prefers-reduced-motion`.
 
 It is published to GitHub Pages at
 <https://leandroaps.github.io/aria-orchestrator/> by
