@@ -1,0 +1,49 @@
+{
+  "name": "ARIA",
+  "expansion": "Agentic Reasoning and Intelligent Automation",
+  "descriptor": "Agentic SDLC Orchestrator",
+  "slogan": "Complexity orchestrated. Simplicity delivered.",
+  "tagline": "Many agents. One intelligence.",
+  "color": {
+    "midnight": { "value": "#0B1020", "role": "primary background" },
+    "surface": { "value": "#181F33", "role": "secondary background" },
+    "border": { "value": "#334155", "role": "subtle borders" },
+    "violet": { "value": "#7C3AED", "role": "primary brand color" },
+    "lavender": { "value": "#A78BFA", "role": "secondary brand color" },
+    "cyan": { "value": "#22D3EE", "role": "accent" },
+    "snow": { "value": "#F8FAFC", "role": "primary light text" },
+    "muted": { "value": "#94A3B8", "role": "secondary text" }
+  },
+  "gradient": {
+    "brand": { "from": "#7C3AED", "to": "#22D3EE", "use": "logo only; avoid elsewhere" }
+  },
+  "status": {
+    "success": { "value": "#34D399", "symbol": "✓", "ascii": "[ok]" },
+    "warning": { "value": "#FBBF24", "symbol": "!", "ascii": "[!]" },
+    "error": { "value": "#F87171", "symbol": "✗", "ascii": "[x]" },
+    "info": { "value": "#22D3EE", "symbol": "i", "ascii": "[i]" },
+    "pending": { "value": "#94A3B8", "symbol": "○", "ascii": "[ ]" },
+    "running": { "value": "#A78BFA", "symbol": "→", "ascii": "[>]" },
+    "awaiting_approval": { "value": "#FBBF24", "symbol": "◆", "ascii": "[?]" },
+    "skipped": { "value": "#94A3B8", "symbol": "–", "ascii": "[-]" },
+    "blocked": { "value": "#F87171", "symbol": "■", "ascii": "[#]" }
+  },
+  "font": {
+    "sans": {
+      "family": "Inter",
+      "stack": "Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "use": "interface, headings, communication"
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "stack": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "use": "CLI, code, technical information"
+    }
+  },
+  "logo": {
+    "source": "assets/brand/aria-icon.png",
+    "vector": "assets/brand/aria-icon.svg",
+    "mark": "assets/brand/aria-mark.svg",
+    "background": "#05061C"
+  }
+}

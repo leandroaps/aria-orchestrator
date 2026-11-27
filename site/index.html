@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARIA - Agentic SDLC Orchestrator</title>
+<meta name="description" content="ARIA simplifies the software development lifecycle through intelligent multi-agent orchestration.">
+<meta name="theme-color" content="#0B1020">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ARIA - Agentic SDLC Orchestrator">
+<meta property="og:description" content="ARIA simplifies the software development lifecycle through intelligent multi-agent orchestration.">
+<meta property="og:image" content="og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The ARIA monogram on a midnight background">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root {
+    --midnight: #0B1020;
+    --snow: #F8FAFC;
+    --muted: #94A3B8;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--midnight);
+    color: var(--snow);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+  main {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 1rem;
+  }
+  .logo {
+    display: block;
+    width: clamp(120px, 32vmin, 320px);
+    aspect-ratio: 480 / 432;
+    height: auto;
+  }
+  .signature { display: none; text-align: center; }
+  body[data-signature="on"] .signature { display: block; }
+  .signature h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: 0.08em; }
+  .signature p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+  .signature .descriptor { margin-bottom: 1rem; }
+  @media (prefers-reduced-motion: no-preference) {
+    main { animation: fade-in 600ms ease-out both; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  }
+</style>
+</head>
+<!-- Set data-signature="on" to show the brand signature under the logo. -->
+<body data-signature="off">
+<main>
+  <img class="logo" src="aria-mark.svg" width="480" height="432" alt="ARIA — Agentic SDLC Orchestrator">
+  <div class="signature">
+    <h1>ARIA</h1>
+    <p class="descriptor">Agentic SDLC Orchestrator</p>
+    <p>Complexity orchestrated.<br>Simplicity delivered.</p>
+  </div>
+</main>
+</body>
+</html>
