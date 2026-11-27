@@ -36,6 +36,16 @@ const WRITE_TOOLS = ["Write", "Edit", "MultiEdit", "NotebookEdit"];
 // protocol): they write handoffs only.
 const CONTROLLER_AGENTS = ["general-purpose", "Explore", "claude", "controller"];
 const HANDOFFS = `${STATE_DIR}/handoffs/**`;
+// Claude Code names a plugin's agent `<plugin>:<agent>`. This plugin's own
+// agents keep their role; another plugin's agent keeps its scoped name, which
+// matches no role and no territory.
+const PLUGIN_SCOPE = "aria-orchestrator:";
+
+export function actorOf(payload) {
+	if (!payload.agent_id) return "lead";
+	const type = String(payload.agent_type ?? "unknown");
+	return type.startsWith(PLUGIN_SCOPE) ? type.slice(PLUGIN_SCOPE.length) : type;
+}
 
 // --- Run state --------------------------------------------------------------
 
@@ -405,9 +415,9 @@ export function prCommandProblem(command) {
 }
 
 // Run commands reserved to the main session: recording an approval,
-// resuming, freeing a lock, cancelling. A subagent that cancelled its own
-// run would keep its change out of `accept`.
-const LEAD_ONLY_RUN = /\b(aria|aria\.mjs)\b[^\n]*\brun\s+(record-approval|resume|recover-lock|cancel)\b/;
+// resuming, freeing a lock, cancelling, choosing what `/loop` follows. A
+// subagent that cancelled its own run would keep its change out of `accept`.
+const LEAD_ONLY_RUN = /\b(aria|aria\.mjs)\b[^\n]*\brun\s+(record-approval|resume|recover-lock|cancel|select)\b/;
 
 function subagentRunStateProblem(root, cwd, tool, input, path) {
 	if (WRITE_TOOLS.includes(tool)) {
@@ -416,7 +426,7 @@ function subagentRunStateProblem(root, cwd, tool, input, path) {
 	if (tool !== "Bash") return null;
 	const command = String(input.command ?? "");
 	if (LEAD_ONLY_RUN.test(command)) {
-		return "run record-approval, resume, recover-lock and cancel belong to the main session";
+		return "run record-approval, resume, recover-lock, cancel and select belong to the main session";
 	}
 	for (const target of bashWriteTargets(command)) {
 		const resolved = canonicalPath(root, cwd, target);
@@ -468,7 +478,7 @@ export function decide(payload, { root }) {
 	}
 
 	const config = loadConfig(root);
-	const actor = payload.agent_id ? String(payload.agent_type ?? "unknown") : "lead";
+	const actor = actorOf(payload);
 	const readOnly = config.agents[actor]?.mode === "read-only";
 
 	if (tool.startsWith("mcp__") || tool === "NotebookEdit") return deny(`${tool} is denied while a task runs`);

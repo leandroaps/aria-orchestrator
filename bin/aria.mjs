@@ -6,11 +6,11 @@
 // command or spec, missing argument, unreadable input).
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { RUN_ID_PATTERN, scrubGitLocationEnv } from "../lib/approval-registry.mjs";
-import { CONFIG_FILE, ConfigError, loadConfig } from "../lib/config.mjs";
+import { CONFIG_FILE, ConfigError, loadConfig, normalizeConfig } from "../lib/config.mjs";
 import { buildExecutionGraph, listSpecDirs, resolveSpec } from "../lib/execution-graph.mjs";
 import { ScopeError, changedScope, classifyImpact } from "../lib/impact.mjs";
 import {
@@ -29,9 +29,13 @@ import {
 	statusCommand,
 	summaryCommand,
 	verifyCommand,
+	selectCommand,
+	observeCommand,
 } from "../lib/run-controller.mjs";
 import { renderRunStatus } from "../lib/experience/run-status.mjs";
 import { manualGate } from "../lib/push-gate.mjs";
+import { REQUIRED_WORKFLOWS, workflowProblems } from "../lib/workflow-check.mjs";
+import { contractFindings } from "../lib/contracts.mjs";
 import { createTheme, detectTerminal } from "../lib/experience/terminal.mjs";
 import { compareHandoffToDelta, hardenedGit, snapshotTree, treeDelta } from "../lib/run-evidence.mjs";
 import { DEFECT_CATEGORIES, LOCK_KEY_PATTERN } from "../lib/run-state.mjs";
@@ -54,6 +58,10 @@ Commands:
   validate handoff <spec> <file.json>   Check a worker's handoff
            [--base <ref>]               ...and compare it with the real change
   validate run [<run-id>]               Check one run, or every run
+  validate contracts                    Check agents, skills, CLAUDE.md and
+                                        AGENTS.md, plus contracts.forbidden
+  validate workflows                    Check the plugin's workflows and the
+                                        repository's .claude/workflows/
   scope --base <ref> --head <ref>       Files and specs a change touches
   classify --base <ref> --head <ref>    Reviews a change requires
            [--files <list.json>]        ...from a JSON list of files instead
@@ -83,6 +91,9 @@ Run commands (one orchestration run of a spec):
   run resume <run-id>                   Revalidate a run after an interruption
   run recover-lock <key>                Free a lock whose holder is gone
   run cancel <run-id> --reason <text>   End a superseded run
+  run select <run-id> [--pr <n>]        Name the run /loop follows
+  run observe [--checks <text>]         One loop tick: work, idle or stop
+           [--head <sha>]               ...for this head (default: HEAD)
 
 Options:
   --root <dir>      Repository root (default: the git top level of the
@@ -230,6 +241,37 @@ function validateRun(ctx, [runId]) {
 	const runIds = runId ? [runId] : listRunIds(ctx.root);
 	const findings = runIds.flatMap((id) => runFindings(ctx.root, id).map((finding) => `${id}: ${finding}`));
 	return report(ctx, { subject: plural(runIds.length, "run"), findings, extra: { runs: runIds } });
+}
+
+// The files that instruct the agents. The config is optional here: without
+// one, only the checks that need no project rule run (the plugin itself).
+function validateContracts(ctx) {
+	const config = existsSync(join(ctx.root, CONFIG_FILE)) ? ctx.config() : normalizeConfig({ version: 1, agents: {} });
+	const found = contractFindings(ctx.root, config, { pluginRoot: ctx.env.pluginRoot });
+	const findings = found.map(({ file, line, message }) => `${file}${line ? `:${line}` : ""}: ${message}`);
+	return report(ctx, { subject: plural(found.files.length, "file"), findings, extra: { files: found.files } });
+}
+
+// The plugin's workflows (the required set must be there) and the
+// repository's own `.claude/workflows/`.
+function validateWorkflows(ctx) {
+	const sources = [];
+	const pluginDir = join(ctx.env.pluginRoot, "workflows");
+	const shipped = new Set(REQUIRED_WORKFLOWS);
+	for (const file of existsSync(pluginDir) ? readdirSync(pluginDir) : []) {
+		if (file.endsWith(".js")) shipped.add(file.slice(0, -3));
+	}
+	for (const name of [...shipped].sort()) sources.push([`workflows/${name}.js`, name, join(pluginDir, `${name}.js`)]);
+	const ownDir = join(ctx.root, ".claude", "workflows");
+	for (const file of existsSync(ownDir) ? readdirSync(ownDir).sort() : []) {
+		if (file.endsWith(".js")) sources.push([`.claude/workflows/${file}`, file.slice(0, -3), join(ownDir, file)]);
+	}
+	const workflows = {};
+	for (const [label, name, path] of sources) {
+		workflows[label] = existsSync(path) ? workflowProblems(name, readFileSync(path, "utf8")) : ["file missing"];
+	}
+	const findings = Object.entries(workflows).flatMap(([label, problems]) => problems.map((problem) => `${label}: ${problem}`));
+	return report(ctx, { subject: plural(sources.length, "workflow"), findings, extra: { workflows } });
 }
 
 function scope(ctx) {
@@ -422,6 +464,21 @@ function runReady(ctx, [runId]) {
 	]);
 }
 
+function runSelect(ctx, [runId]) {
+	const pr = ctx.options.pr === undefined ? null : Number(ctx.options.pr);
+	return runCommand(ctx, () => selectCommand(ctx.root, { runId, pr }), ({ target }) => [
+		`The loop follows run ${target.run_id} (spec ${target.spec}, branch ${target.branch}${target.pr ? `, PR #${target.pr}` : ""}).`,
+	]);
+}
+
+function runObserve(ctx) {
+	const { head = null, checks = "unknown" } = ctx.options;
+	return runCommand(ctx, () => observeCommand(ctx.root, { head, checks }), (result) => [
+		`${result.action}: ${result.reason}`,
+		...(result.dispatchable?.length > 0 ? [`Dispatchable: ${list(result.dispatchable)}.`] : []),
+	]);
+}
+
 function runFail(ctx, [runId, taskId]) {
 	const { category, repro: reproduction, requirement } = ctx.options;
 	return runCommand(
@@ -514,6 +571,8 @@ const COMMANDS = {
 	"validate graph": { run: validateGraph, args: ["spec"] },
 	"validate handoff": { run: validateHandoff, args: ["spec", "file"], options: ["base"] },
 	"validate run": { run: validateRun, args: ["run-id?"] },
+	"validate workflows": { run: validateWorkflows, args: [] },
+	"validate contracts": { run: validateContracts, args: [] },
 	scope: { run: scope, args: [], options: ["base", "head"], requires: ["base", "head"] },
 	classify: { run: classify, args: [], options: ["base", "head", "files", "manual"] },
 	gate: { run: gateCommand, args: [] },
@@ -535,6 +594,8 @@ const COMMANDS = {
 	"run resume": { run: runResume, args: ["run-id"] },
 	"run recover-lock": { run: runRecoverLock, args: ["key"] },
 	"run cancel": { run: runCancel, args: ["run-id"], options: ["reason"], requires: ["reason"] },
+	"run select": { run: runSelect, args: ["run-id"], options: ["pr"] },
+	"run observe": { run: runObserve, args: [], options: ["head", "checks"] },
 };
 
 const OPTIONS = {
@@ -552,6 +613,8 @@ const OPTIONS = {
 	reason: { type: "string" },
 	verbose: { type: "boolean", short: "v" },
 	debug: { type: "boolean" },
+	pr: { type: "string" },
+	checks: { type: "string" },
 };
 
 // Identifiers that become paths or lock names are checked before any use.
@@ -563,6 +626,8 @@ const ARG_PATTERNS = {
 const OPTION_PATTERNS = {
 	category: [new RegExp(`^(?:${DEFECT_CATEGORIES.join("|")})$`), `one of ${DEFECT_CATEGORIES.join(", ")}`],
 	requirement: [/^R\d+(?:\.\d+)*$/, "a requirement id such as R1.2"],
+	pr: [/^[1-9]\d{0,9}$/, "a pull request number"],
+	checks: [/^[^\n]{1,2000}$/, "one line of at most 2000 characters"],
 };
 
 function findCommand(positionals) {

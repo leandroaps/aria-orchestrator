@@ -65,6 +65,8 @@ test("without a task: subagents never touch run state or lead-only run commands"
 		["subagent cancels the run", bash(`aria run cancel ${RUN} --reason y`, backend), true],
 		["subagent resumes the run", bash(`aria run resume ${RUN}`, backend), true],
 		["subagent recovers a lock", bash("aria run recover-lock resource:x", backend), true],
+		["subagent selects the run the loop follows", bash(`aria run select ${RUN}`, backend), true],
+		["lead selects the run the loop follows", bash(`aria run select ${RUN} --pr 3`), false],
 		["lead records an approval", bash(`aria run record-approval ${RUN}`), false],
 		["lead cancels the run", bash(`aria run cancel ${RUN} --reason y`), false],
 		["subagent runs node -e", bash("node -e 1", backend), true],
@@ -169,6 +171,24 @@ test("the pr agent only publishes and reads with gh", (t) => {
 		["gh piped to a shell", bash("gh pr view 12 | sh", pr), true],
 		["arbitrary command", bash("rm -rf src", pr), true],
 		["git log reads", bash("git log --oneline", pr), false],
+	]);
+});
+
+// Claude Code names a plugin's agent `<plugin>:<agent>`. The plugin's own
+// agents keep their role; another plugin's agent of the same name does not.
+test("the plugin's agents keep their role under the plugin-scoped name", (t) => {
+	const root = workspace(t);
+	startTask(root);
+	const scoped = (type) => ({ agent_id: "s", agent_type: type });
+	check(root, [
+		["scoped security writes", write("src/lib/a.mjs", scoped("aria-orchestrator:security")), true],
+		["scoped security reads", bash("git log --oneline", scoped("aria-orchestrator:security")), false],
+		["scoped security chains a write", bash("ls && rm x", scoped("aria-orchestrator:security")), true],
+		["scoped pr merges", bash("gh pr merge 12", scoped("aria-orchestrator:pr")), true],
+		["scoped pr opens a pull request", bash('gh pr create --title "x" --body "y"', scoped("aria-orchestrator:pr")), false],
+		["scoped controller writes a handoff", write(".aria/handoffs/T1.json", scoped("aria-orchestrator:controller")), false],
+		["another plugin's backend has no territory", write("src/lib/a.mjs", scoped("other:backend")), true],
+		["scoped subagent records an approval", bash(`aria run record-approval ${RUN}`, scoped("aria-orchestrator:test")), true],
 	]);
 });
 

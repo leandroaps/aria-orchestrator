@@ -186,6 +186,38 @@ Each phase ends green on `npm test` in aria before the next starts.
   skills and the five core agents; rename workflows; spec templates;
   `aria validate contracts` and the workflow commands (`check-workflows`,
   `select`, `observe`).
+  Done in one pull request. Differences from bernardo-pet:
+  - `check-workflows` is `aria validate workflows`, next to the other read
+    checks. It checks the plugin's `workflows/` (the three `aria-*` are
+    required) and the repository's `.claude/workflows/`, against the rules
+    the workflow page documents: `meta` first and literal, `meta.name` equal
+    to the file, phases opened with the titles `meta` lists, no module
+    loading, no filesystem, shell or `process`, no clock or randomness, and
+    no `.filter(Boolean)`. Prompt text in strings and comments is ignored.
+  - `select` and `observe` are `aria run select` and `aria run observe`.
+    `observe` stops when the approval no longer holds, not only on the
+    run's state. `select` is reserved to the main session.
+  - `.claude/loop.md` cannot ship in a plugin; the `follow-run` skill holds
+    the tick, run as `/loop /aria-orchestrator:follow-run`.
+  - `validate contracts` keeps the generic checks (skill anatomy, read-only
+    agents' tools, preloaded skills, dead paths) and adds one: fields Claude
+    Code ignores for plugin agents (`hooks`, `mcpServers`, `permissionMode`,
+    `initialPrompt`). Bernardo's project rules (false claims, model and
+    effort per role, its memory-file rules) become `contracts.forbidden` in
+    `aria.config.json`, or stay in bernardo.
+  - `test` and `security` are new, stack-neutral skills; bernardo keeps its
+    Playwright and Next.js checklists. `orchestrate` drops bernardo's
+    roadmap table and tracking-issue steps.
+  - The workflows cannot read `aria.config.json`, so `aria-execute` accepts
+    any plain agent name as an owner except the control agents; `aria run
+    accept` still checks the handoff's agent and the real change.
+    `aria-review` takes the project's closing commands as `args.checks`.
+  - The tool guard maps `aria-orchestrator:<agent>` to `<agent>`. Another
+    plugin's agent keeps its scoped name and has no role or territory.
+  To check in P7: whether a hook's `agent_type` carries the plugin-scoped
+  name; whether a workflow's `agentType` and an agent's `skills` accept
+  `aria-orchestrator:<name>`; and the `Workflow` tool's name for a plugin
+  workflow.
 - **P6 — End-to-end test.** A fixture repo created in a temp dir runs a full
   run: plan → approval → dispatch → accept → review, asserting the guards
   block out-of-territory writes and unapproved runs.
@@ -219,7 +251,13 @@ a real session.
    and a deny from any of them wins.
 2. **Plugins ship workflows** in `workflows/` (manifest key `workflows`). No
    `aria init` copy is needed for them. `.claude/workflows` itself is not
-   mentioned; the workflow page is read in P5.
+   mentioned; the workflow page is read in P5. Read in P5
+   (`workflows` page): a plugin workflow runs as
+   `/aria-orchestrator:<meta.name>`; the script only coordinates agents
+   (no filesystem, shell or module loading); `Date.now()`, `Math.random()`
+   and `new Date()` throw; `meta` must be a literal and open the file. The
+   page documents `agent()` options `schema`, `label` and `stallMs`, not
+   `agentType`, which bernardo uses and P7 checks.
 3. **`bin/` is on the Bash tool's `PATH`** while the plugin is enabled, so
    Claude runs `aria` as a bare command. Hook commands get
    `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA` and `CLAUDE_PROJECT_DIR`; those
