@@ -50,4 +50,5 @@ it, so progress on screen always comes from real state. Plan 0001's layout
 
 The GitHub avatar (account or the farofino-bot app) is uploaded by hand
 from `assets/brand/aria-icon.png` (768 px, about 0.5 MB, under the 1 MB
-limit). A production domain for the landing page is not chosen yet.
+limit). The landing page is served by GitHub Pages from `site/`; no custom
+domain.
