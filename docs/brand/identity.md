@@ -100,7 +100,9 @@ signature (name, descriptor, slogan) is built in and hidden; set
 `data-signature="on"` on `<body>` to show it. The only motion is a fade on
 first load, skipped under `prefers-reduced-motion`.
 
-It deploys as-is to any static host (Cloudflare Pages: build command none,
-output directory `site`). No production domain is set yet, so the Open
-Graph image URL is relative; most crawlers need an absolute URL, which
-should be filled in once a domain exists.
+It is published to GitHub Pages at
+<https://www.leandroaps.com.br/aria-orchestrator/> by
+`.github/workflows/pages.yml`, on every push to `main` that touches
+`site/`. The Open Graph URLs are absolute and point there; change them in
+`site/index.html` (and the brand test) if the page moves to another domain.
+The page has no build step, so any static host can serve `site/` as-is.
