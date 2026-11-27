@@ -89,6 +89,10 @@
     `node`;
   - English is the stated default everywhere; `locale: pt-BR` only on
     request.
+- Project page: the name's meaning, "Agentic Reasoning and Intelligent
+  Automation", right under "ARIA". The language and theme controls now
+  stack above the page: on a phone, `<main>` covered them and a click on
+  the theme button or a language link did nothing.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;

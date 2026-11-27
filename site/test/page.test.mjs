@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 // Built by `npm run build`, which `npm test` runs first (pretest).
 import { LOCALES, render } from "../dist-ssr/render.js";
@@ -23,6 +24,17 @@ test("signature copy, in English in every locale", () => {
 		for (const text of ["Agentic SDLC Orchestrator", "Complexity orchestrated.", "Simplicity delivered."]) {
 			assert.ok(html.includes(text), `${code}: ${text}`);
 		}
+	}
+});
+
+test("the name's meaning sits right under it, before the descriptor, in every locale", () => {
+	for (const { code } of LOCALES) {
+		const html = page({ locale: code });
+		const name = html.indexOf("<h1>ARIA</h1>");
+		const meaning = html.indexOf('<p class="expansion">Agentic Reasoning and Intelligent Automation</p>');
+		const descriptor = html.indexOf('<p class="descriptor">');
+		assert.ok(name > html.indexOf('class="logo"'), code);
+		assert.ok(meaning > name && meaning < descriptor, `${code}: name, then meaning, then descriptor`);
 	}
 });
 
@@ -142,4 +154,14 @@ test("the theme button names the action and has no pressed state", () => {
 	const button = html.match(/<button[^>]*id="theme-toggle"[^>]*>/)[0];
 	assert.doesNotMatch(button, /aria-pressed/);
 	assert.doesNotMatch(html.match(/<script>([\s\S]*?)<\/script>/)[1], /aria-pressed/);
+});
+
+// On a phone <main> spans the width and was painted over the absolutely
+// positioned controls, so a click on the theme button or a language link
+// landed on <main>.
+test("the language and theme controls stack above main", () => {
+	const css = readFileSync(join(import.meta.dirname, "..", "src", "styles.css"), "utf8");
+	const controls = css.match(/\n\.controls \{[^}]*\}/)[0];
+	assert.match(controls, /position: absolute;/);
+	assert.match(controls, /z-index: [1-9]\d*;/);
 });
