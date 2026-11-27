@@ -213,7 +213,7 @@ return {
 	high_impact: highImpact,
 	classifier: classifierValid ? classifier : null,
 	classifier_missing: classifierMissing,
-	impact_problems: impactProblems,
+	impact_problems: [...new Set(impactProblems)],
 	security: security ?? null,
 	security_missing: securityMissing,
 	// This workflow ends here. Only the owner's click on the approval question

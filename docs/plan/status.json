@@ -7,8 +7,8 @@
     { "id": "P3", "title": "CLI", "state": "done" },
     { "id": "P4", "title": "Hooks", "state": "done" },
     { "id": "P5", "title": "Skills, agents, workflows", "state": "done" },
-    { "id": "P6", "title": "End-to-end test", "state": "in-progress" },
-    { "id": "P7", "title": "Real validation", "state": "next" },
+    { "id": "P6", "title": "End-to-end test", "state": "done" },
+    { "id": "P7", "title": "Real validation", "state": "in-progress" },
     { "id": "P8", "title": "Bernardo migration (separate, later)", "state": "next" }
   ]
 }

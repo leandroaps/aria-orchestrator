@@ -182,7 +182,8 @@ gives it as `approval_question`.
 ## Development
 
 ```bash
-npm test                # node:test, no dependencies
+npm test                # node:test, no dependencies, including the
+                        # end-to-end run in test/e2e.test.mjs
 npm run validate:plugin # claude plugin validate --strict
 ```
 
