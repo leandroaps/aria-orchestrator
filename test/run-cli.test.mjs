@@ -2,81 +2,15 @@
 // call `main` in-process so they can hand it a plugin root whose question
 // hook they know; the real binary always uses its own plugin directory.
 
+
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, test } from "node:test";
-import { setTimeout as sleep } from "node:timers/promises";
-import { main } from "../bin/aria.mjs";
-import { appendApproval, resolveCommonDir } from "../lib/approval-registry.mjs";
+import { test } from "node:test";
+import { HANDOFF_T1, aria, approvedRun, create, handoff, presentAndClick, run } from "./helpers/run-cli.mjs";
 import { SPEC, git, workspace, writeFile } from "./helpers/workspace.mjs";
-
-const HOOK_SOURCE = "// question hook used by the tests\n";
-const HOOK_DIGEST = createHash("sha256").update(HOOK_SOURCE).digest("hex");
-const PLUGIN = realpathSync(mkdtempSync(join(tmpdir(), "aria-plugin-")));
-writeFile(PLUGIN, "hooks/question-hook.mjs", HOOK_SOURCE);
-after(() => rmSync(PLUGIN, { recursive: true, force: true }));
-
-function aria(argv, { cwd, pluginRoot = PLUGIN } = {}) {
-	const stdout = [];
-	const stderr = [];
-	const out = { stdout: (line) => stdout.push(line), stderr: (line) => stderr.push(line) };
-	const code = main(argv, out, { cwd, pluginRoot });
-	return {
-		code,
-		stdout: stdout.join("\n"),
-		stderr: stderr.join("\n"),
-		json: () => JSON.parse(stdout.join("\n")),
-	};
-}
-
-// JSON mode, inside the workspace.
-function run(root, argv, options = {}) {
-	return aria(["run", ...argv, "--json"], { cwd: root, ...options });
-}
-
-function create(root) {
-	const result = run(root, ["create", SPEC]);
-	assert.equal(result.code, 0, result.stdout + result.stderr);
-	return result.json().run.run_id;
-}
-
-// Presents the plan, then writes the owner's click strictly after it.
-async function presentAndClick(root, runId, { hookDigest = HOOK_DIGEST } = {}) {
-	const plan = run(root, ["plan", runId]);
-	assert.equal(plan.code, 0, plan.stdout + plan.stderr);
-	await sleep(5);
-	return appendApproval(resolveCommonDir(root), {
-		approves: plan.json().approval_prefix,
-		runId,
-		hookDigest,
-	});
-}
-
-async function approvedRun(root) {
-	const runId = create(root);
-	await presentAndClick(root, runId);
-	const recorded = run(root, ["record-approval", runId]);
-	assert.equal(recorded.code, 0, recorded.stdout + recorded.stderr);
-	return runId;
-}
-
-function handoff(root, name, body) {
-	const path = join(root, ".aria", name);
-	writeFile(root, join(".aria", name), JSON.stringify(body));
-	return path;
-}
-
-const HANDOFF_T1 = {
-	task: "T1",
-	agent: "backend",
-	status: "completed",
-	changed_files: ["src/lib/new.txt"],
-	requirements: { "R1.1": "ok" },
-	evidence: { "R1.1": "node tools/check.mjs" },
-};
 
 // --- create, plan, status -----------------------------------------------------
 

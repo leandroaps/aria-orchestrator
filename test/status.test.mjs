@@ -31,9 +31,9 @@ test("states are valid, at most one phase is in progress, and done comes first",
 	}
 });
 
-test("current status: P0–P2 done, P3 in progress, the rest next", () => {
+test("current status: P0–P3 done, P4 in progress, the rest next", () => {
 	assert.deepEqual(
 		status.phases.map((phase) => `${phase.id}:${phase.state}`),
-		["P0:done", "P1:done", "P2:done", "P3:in-progress", "P4:next", "P5:next", "P6:next", "P7:next", "P8:next"],
+		["P0:done", "P1:done", "P2:done", "P3:done", "P4:in-progress", "P5:next", "P6:next", "P7:next", "P8:next"],
 	);
 });
