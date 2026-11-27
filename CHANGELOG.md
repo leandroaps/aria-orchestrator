@@ -23,6 +23,13 @@
   `aria validate config` (`--root`, `--json`; exit 0/1/2). Tests keep the
   schema and the loader in step on the same corpus of valid and invalid
   configs.
+- CLI, first part (plan 0001, phase P3.1): `aria validate spec`, `validate
+  graph`, `validate handoff` (with `--base`, against the real change),
+  `validate run`, `scope` and `classify`. The checks live in
+  `lib/validate.mjs` and `lib/impact.mjs`. Changes to governance files
+  always require `security`, from a list fixed in code. A required reviewer
+  missing from `aria.config.json` is reported and fails `classify`. The
+  root defaults to the git top level.
 - Brand identity (plan 0002, phase B1): approved logo and its vector,
   monogram, favicon, app and Open Graph variants; `brand-tokens.json`
   (colours, status colours and symbols with ASCII fallbacks, fonts, copy);
