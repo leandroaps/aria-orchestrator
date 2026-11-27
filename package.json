@@ -1,0 +1,15 @@
+{
+  "name": "aria-orchestrator",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Spec-driven SDLC orchestration for Claude Code, with approval, territory and evidence rules enforced by code.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "validate:plugin": "claude plugin validate . --strict"
+  }
+}

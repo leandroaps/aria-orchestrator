@@ -1,0 +1,4 @@
+node_modules/
+.aria/
+.DS_Store
+*.log
