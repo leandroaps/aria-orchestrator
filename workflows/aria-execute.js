@@ -3,7 +3,7 @@ export const meta = {
 	description:
 		"Dispatch an approved run's ready tasks to their owners and accept each one only on observed evidence.",
 	whenToUse:
-		"Called by the orchestrate skill after the owner clicked the approval question and the Lead ran aria run record-approval. Args { run: '<run-id>' }.",
+		"Called by the orchestrate skill after the owner clicked the approval question and the Lead ran aria run record-approval. Args { run: '<run-id>', tokenLimit?: <output tokens> }: with a limit, no new round is dispatched once the turn has spent it.",
 	phases: [
 		{ title: "Gate", detail: "run status and approval before any writer" },
 		{ title: "Dispatch", detail: "start, owner, accept, per ready task" },
@@ -22,6 +22,10 @@ if (typeof agent !== "function" || typeof pipeline !== "function") {
 	};
 }
 
+// What this turn has spent, in output tokens, when the runtime reports it
+// (`budget` is shared by the main loop and every workflow of the turn).
+const spent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+
 const CONTROLLER = "aria-orchestrator:controller";
 const RUN_ID = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
 const TASK_ID = /^(?:T\d+|TN)$/;
@@ -37,6 +41,10 @@ const BATCH = 3;
 
 const runId = typeof args === "object" && args !== null ? String(args.run ?? "") : String(args ?? "");
 if (!RUN_ID.test(runId)) return { ok: false, diagnosis: `invalid args.run "${runId}"` };
+const tokenLimit = typeof args === "object" && args !== null && args.tokenLimit !== undefined ? Number(args.tokenLimit) : null;
+if (tokenLimit !== null && !(Number.isInteger(tokenLimit) && tokenLimit > 0)) {
+	return { ok: false, diagnosis: `invalid args.tokenLimit "${args.tokenLimit}" (a positive whole number of output tokens)` };
+}
 
 function invalidStatusField(status) {
 	const known = new Set((status.tasks ?? []).map((task) => String(task.id)));
@@ -132,19 +140,27 @@ Return state, approval_valid (the approval.valid field), approval_reasons (appro
 
 let status = await readStatus();
 if (status === null || status === undefined) {
-	return { ok: false, run: runId, blocked: "status unavailable; nothing dispatched" };
+	return { ok: false, run: runId, blocked: "status unavailable; nothing dispatched", tokens: spent() };
 }
 const statusProblem = invalidStatusField(status);
-if (statusProblem) return { ok: false, run: runId, diagnosis: statusProblem };
+if (statusProblem) return { ok: false, run: runId, diagnosis: statusProblem, tokens: spent() };
 if (!status.approval_valid || !["approved", "running"].includes(status.state)) {
-	return { ok: false, run: runId, blocked: "the run is not approved for the current plan", status };
+	return { ok: false, run: runId, blocked: "the run is not approved for the current plan", status, tokens: spent() };
 }
 
 phase("Dispatch");
 const outcomes = [];
 let rounds = 0;
 let leadReady = [];
+let stoppedByTokenLimit = false;
 while (rounds < MAX_ROUNDS) {
+	// A round dispatches whole tasks; the limit is checked between rounds,
+	// so a task is never cut in half.
+	if (tokenLimit !== null && spent() !== null && spent() >= tokenLimit) {
+		stoppedByTokenLimit = true;
+		log(`token limit reached (${spent()} of ${tokenLimit} output tokens): no new round dispatched`);
+		break;
+	}
 	rounds += 1;
 	const owners = new Map((status.tasks ?? []).map((task) => [task.id, task.owner]));
 	// `lead` is the main session, not an agent type: its tasks go back to it.
@@ -210,10 +226,10 @@ ${JSON.stringify(handoff)}`,
 
 	status = await readStatus();
 	if (status === null || status === undefined) {
-		return { ok: false, run: runId, blocked: "status unavailable mid-run", outcomes };
+		return { ok: false, run: runId, blocked: "status unavailable mid-run", outcomes, tokens: spent() };
 	}
 	const roundProblem = invalidStatusField(status);
-	if (roundProblem) return { ok: false, run: runId, diagnosis: roundProblem, outcomes };
+	if (roundProblem) return { ok: false, run: runId, diagnosis: roundProblem, outcomes, tokens: spent() };
 	if (!["approved", "running"].includes(status.state)) break;
 }
 
@@ -226,9 +242,13 @@ return {
 	pending,
 	lead_ready: leadReady,
 	outcomes,
+	tokens: spent(),
+	stopped_by_token_limit: stoppedByTokenLimit,
 	next:
 		pending.length === 0
 			? "every task is accepted: run aria-review"
+			: stoppedByTokenLimit
+				? `token limit reached: ${pending.length} task(s) left; run aria-execute again with a new tokenLimit, or continue by hand`
 			: leadReady.length > 0
 				? `lead tasks ready for the main session: ${leadReady.join(", ")}`
 				: status.state === "blocked"

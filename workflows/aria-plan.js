@@ -24,6 +24,10 @@ if (typeof agent !== "function" || typeof phase !== "function") {
 	};
 }
 
+// What this turn has spent, in output tokens, when the runtime reports it
+// (`budget` is shared by the main loop and every workflow of the turn).
+const spent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+
 const CONTROLLER = "aria-orchestrator:controller";
 const SECURITY = "aria-orchestrator:security";
 const SPEC = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/;
@@ -121,14 +125,16 @@ const SECURITY_SCHEMA = {
 phase("Reality check");
 const reality = await agent(
 	`Use the reality-check skill on spec ${spec}, read-only. Deterministic checks first: files, package scripts, routes, cited specs and ADRs, and "aria validate contracts". Also judge the impact: does any path the spec's tasks touch match an impact rule in aria.config.json or the files that govern the orchestration? "aria classify" runs afterwards and can only add to your judgment. Return only the structured result.`,
-	{ label: `reality:${spec}`, phase: "Reality check", agentType: "Explore", schema: REALITY_SCHEMA },
+	// The model policy (lib/model-policy.mjs, REALITY_CHECK): the built-in
+	// Explore agent would otherwise pick its own model.
+	{ label: `reality:${spec}`, phase: "Reality check", agentType: "Explore", model: "sonnet", effort: "medium", schema: REALITY_SCHEMA },
 );
 
 if (reality === null || reality === undefined) {
 	return { ok: false, spec, blocked: "the reality check returned no result", reality: null };
 }
 if (reality.status === "blocked") {
-	return { ok: false, spec, blocked: "blocking divergence: fix the documentation or get the owner's decision", reality };
+	return { ok: false, spec, blocked: "blocking divergence: fix the documentation or get the owner's decision", reality, tokens: spent() };
 }
 
 phase("Graph");
@@ -148,7 +154,7 @@ if (
 	!RUN_ID.test(String(plan.run_id ?? "")) ||
 	!PREFIX.test(String(plan.approval_prefix ?? ""))
 ) {
-	return { ok: false, spec, blocked: "the graph is invalid or no plan was produced", reality, plan: plan ?? null };
+	return { ok: false, spec, blocked: "the graph is invalid or no plan was produced", reality, plan: plan ?? null, tokens: spent() };
 }
 
 // High impact is the union of the reality check's judgment and
@@ -216,6 +222,7 @@ return {
 	impact_problems: [...new Set(impactProblems)],
 	security: security ?? null,
 	security_missing: securityMissing,
+	tokens: spent(),
 	// This workflow ends here. Only the owner's click on the approval question
 	// approves, and the question hook records it.
 	next: securityMissing

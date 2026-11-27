@@ -1,6 +1,6 @@
 ---
 name: reality-check
-effort: medium
+effort: low
 description: >
   Confront what a spec, an ADR or an agent or skill prompt claims exists with
   what the repository actually holds at the current ref, deterministic checks

@@ -87,8 +87,8 @@ checks below are read-only.
 | `validate graph <spec>` | Owners, dependencies, cycles, territories, and parallel tasks that write the same paths |
 | `validate handoff <spec> <file> [--base <ref>]` | A worker's handoff: shape, owner, territory, and with `--base`, the real change |
 | `validate run [<run-id>]` | A run's manifest, events and approval provenance |
-| `validate contracts` | Agents, skills, `CLAUDE.md` and `AGENTS.md`: skill anatomy, read-only agents' tools, preloaded skills, paths that do not exist, and the project's `contracts.forbidden` rules |
-| `validate workflows` | The plugin's workflows and the repository's `.claude/workflows/`, against the rules of the workflow runtime |
+| `validate contracts` | Agents, skills, `CLAUDE.md` and `AGENTS.md`: skill anatomy, the model policy, read-only agents' tools, preloaded skills, paths that do not exist, and the project's `contracts.forbidden` rules |
+| `validate workflows` | The plugin's workflows and the repository's `.claude/workflows/`, against the rules of the workflow runtime; every `agent()` names its model |
 | `scope --base <ref> --head <ref>` | Files and specs a change touches, and whether governance files changed |
 | `classify (--base/--head \| --files <json>) [--manual <json>]` | Reviews the change requires or recommends, with the reason for each |
 
@@ -157,6 +157,31 @@ controller.
 | Agent | `controller` | Runs the one `aria` command a workflow step gives it |
 | Agent | `security`, `test`, `pr`, `presenter` | The core roles; the project's own agents (`backend`, `frontend`…) live in its `.claude/agents/` |
 | Workflow | `aria-plan`, `aria-execute`, `aria-review` | Plan and impact, dispatch and accept, closing gates and the final security review |
+
+### Models and tokens
+
+Each step runs on the cheapest model that does it well. The table lives in
+[`lib/model-policy.mjs`](lib/model-policy.mjs), and `aria validate
+contracts` holds the plugin's agents and skills to it:
+
+| Agent | Model / effort | Why |
+|---|---|---|
+| `controller` | Haiku / low | runs one given command and returns its JSON |
+| `presenter` | Haiku / low | mechanical coherence checks |
+| `test`, `pr` | Sonnet / medium | writes tests; reviews a diff |
+| `security` | Opus / high | the judgement that blocks or allows |
+
+Skills run on the session's model with a fixed effort: `low` for
+`follow-run`, `presenter` and `reality-check`; `high` for `spec`,
+`doubt-review` and `security`; `medium` for the rest, `orchestrate`
+included.
+
+In the project's own repository, `aria validate contracts` reports an agent
+without `model` or `effort`: it would run on the session's, possibly the
+most expensive. `aria validate workflows` reports an `agent()` call that
+names no model, directly or through a plugin agent. Every workflow returns
+the tokens the turn has spent, and `aria-execute` takes a `tokenLimit`
+after which it dispatches no new round.
 
 Spec templates live in [`templates/spec/`](templates/spec/). In a
 repository with the plugin installed, workflows run as

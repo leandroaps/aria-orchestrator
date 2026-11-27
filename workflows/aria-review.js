@@ -20,6 +20,10 @@ if (typeof agent !== "function" || typeof phase !== "function") {
 	};
 }
 
+// What this turn has spent, in output tokens, when the runtime reports it
+// (`budget` is shared by the main loop and every workflow of the turn).
+const spent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+
 const CONTROLLER = "aria-orchestrator:controller";
 const SECURITY = "aria-orchestrator:security";
 const RUN_ID = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
@@ -92,10 +96,10 @@ Return the "spec" field (or the command's error in "error").`,
 	{ label: `spec:${runId}`, phase: "Gates", agentType: CONTROLLER, schema: SPEC_SCHEMA },
 );
 if (specInfo === null || specInfo === undefined || !specInfo.spec) {
-	return { ok: false, run: runId, blocked: "could not resolve the run's spec", specInfo: specInfo ?? null };
+	return { ok: false, run: runId, blocked: "could not resolve the run's spec", specInfo: specInfo ?? null, tokens: spent() };
 }
 const spec = String(specInfo.spec);
-if (!SPEC.test(spec)) return { ok: false, run: runId, diagnosis: `invalid spec "${spec}" from the status step` };
+if (!SPEC.test(spec)) return { ok: false, run: runId, diagnosis: `invalid spec "${spec}" from the status step`, tokens: spent() };
 
 // Sequential on purpose: a project's build and test commands often write the
 // same artifacts and must not race each other.
@@ -151,6 +155,7 @@ return {
 	scope: scopeValid ? scope : null,
 	scope_missing: !scopeValid,
 	security: security ?? null,
+	tokens: spent(),
 	// The Lead records the results and decides; merge and deploy are never
 	// implied by this result.
 	next: !gatesPassed

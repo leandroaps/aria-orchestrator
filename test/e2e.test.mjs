@@ -18,6 +18,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { aria } from "./helpers/run-cli.mjs";
 import { PLUGIN_ROOT, handoff, simulatedTeam } from "./helpers/simulated-team.mjs";
 import { runWorkflow } from "./helpers/workflow-runtime.mjs";
+import { REALITY_CHECK } from "../lib/model-policy.mjs";
 import { SPEC, git, workspace, writeFile } from "./helpers/workspace.mjs";
 
 const HOOK = join(PLUGIN_ROOT, "hooks", "question-hook.mjs");
@@ -235,4 +236,40 @@ test("out of territory: the guard denies the write, and a write around it is ref
 		]).flat(),
 	);
 	assert.equal(lead(root, ["status", runId, "--json"]).json().state, "blocked");
+});
+
+test("a token limit stops dispatching between rounds, leaving the run consistent", async (t) => {
+	const root = project(t);
+	const team = simulatedTeam(root, { worker: honestWorker });
+	const { run_id: runId, approval_question: question } = await plannedRun(root, team);
+	await ownerClicks(root, question);
+	assert.equal(lead(root, ["run", "record-approval", runId, "--json"]).code, 0);
+
+	// Round 1 (status, then start, work and accept for T1 and T3) spends
+	// 7 agents; the limit is reached before round 2 would dispatch T2.
+	const executed = await runWorkflow("aria-execute", { run: runId, tokenLimit: 5000 }, team.agentImpl, { tokensPerAgent: 1000 });
+	assert.equal(executed.result.ok, false);
+	assert.equal(executed.result.stopped_by_token_limit, true);
+	assert.equal(executed.result.tokens, 8000);
+	assert.match(executed.result.next, /token limit/);
+	assert.deepEqual(executed.result.outcomes.map((outcome) => [outcome.taskId, outcome.accepted?.ok]), [["T1", true], ["T3", true]]);
+	assert.ok(executed.logs.some((line) => /token limit/.test(line)));
+	// Nothing is left running: the next run of the workflow picks T2 up.
+	const status = lead(root, ["status", runId, "--json"]).json();
+	assert.deepEqual(status.dispatchable, ["T2"]);
+	const resumed = await runWorkflow("aria-execute", { run: runId }, team.agentImpl);
+	assert.equal(resumed.result.ok, true, JSON.stringify(resumed.result));
+});
+
+test("every workflow reports what it spent, and the reality check names its model", async (t) => {
+	const root = project(t);
+	const team = simulatedTeam(root, { worker: honestWorker });
+	const planned = await runWorkflow("aria-plan", { spec: SPEC }, team.agentImpl, { tokensPerAgent: 10 });
+	assert.equal(planned.result.tokens, planned.calls.length * 10);
+	const reality = planned.calls.find((call) => call.label.startsWith("reality:"));
+	assert.deepEqual([reality.agentType, reality.model, reality.effort], ["Explore", REALITY_CHECK.model, REALITY_CHECK.effort]);
+	const early = await runWorkflow("aria-execute", { run: planned.result.plan.run_id }, team.agentImpl, { tokensPerAgent: 10 });
+	assert.equal(early.result.tokens, early.calls.length * 10);
+	const reviewed = await runWorkflow("aria-review", { run: planned.result.plan.run_id }, team.agentImpl, { tokensPerAgent: 10 });
+	assert.equal(reviewed.result.tokens, reviewed.calls.length * 10);
 });

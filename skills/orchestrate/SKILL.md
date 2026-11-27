@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-effort: high
+effort: medium
 description: >
   The Lead's protocol for executing a spec as an orchestrator: reality check,
   impact, execution graph, the owner's approval by click, dependency-driven
@@ -223,13 +223,19 @@ the opt-in the tool requires.
 |---|---|
 | 1–3 | `Workflow({ name: "aria-orchestrator:aria-plan", args: { spec } })`: reality check, impact, graph, `security` pre-review on high impact, run created and plan presented. It never implements. |
 | 4 | Present the plan and ask `approval_question`; **stop**. After the click, `aria run record-approval <run-id>`. |
-| 5–10 | Open the draft PR (step 5), then `Workflow({ name: "aria-orchestrator:aria-execute", args: { run } })`. Tasks owned by `lead` come back to this session: run them with `aria run start` and `accept` yourself. |
+| 5–10 | Open the draft PR (step 5), then `Workflow({ name: "aria-orchestrator:aria-execute", args: { run, tokenLimit } })`. Tasks owned by `lead` come back to this session: run them with `aria run start` and `accept` yourself. |
 | 11 | `Workflow({ name: "aria-orchestrator:aria-review", args: { run, checks } })` with the project's closing commands, then step 12 here. |
 
 Fall back to the manual protocol only on an **observed** missing
 capability: the Workflow tool is not offered, or a workflow returns
 `ok: false` with a `diagnosis`. Never because it seems simpler. The tool
 guard applies either way.
+
+Every workflow returns `tokens`, the output tokens the turn has spent so
+far; report it to the owner with the result. When the owner sets a budget,
+pass it to `aria-execute` as `tokenLimit`: no new round of tasks is
+dispatched once the turn has spent it, and the result says how many tasks
+are left. A round is never cut in half.
 
 The workflows' control steps run on the plugin's `controller` agent. It
 runs only the command it is given and returns the JSON. It is not a worker:

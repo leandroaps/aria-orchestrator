@@ -19,7 +19,7 @@ const GOOD = `export const meta = {
 };
 
 phase("Read");
-const found = await agent("Read the spec", { schema: { type: "object" } });
+const found = await agent("Read the spec", { schema: { type: "object" }, model: "sonnet", effort: "low" });
 phase("Check");
 return { ok: found !== null, found };
 `;
@@ -102,4 +102,16 @@ test("a plugin missing a required workflow fails", (t) => {
 	assert.equal(result.code, 1);
 	assert.match(result.stdout, /workflows\/aria-execute\.js: file missing/);
 	assert.match(result.stdout, /workflows\/aria-review\.js: file missing/);
+});
+
+// The model policy reaches the workflows: no agent() call falls back to the
+// session's model.
+test("every agent() names its model, directly or through a plugin agent", () => {
+	const call = (options) => GOOD.replace('{ schema: { type: "object" }, model: "sonnet", effort: "low" }', options);
+	assert.deepEqual(workflowProblems("demo", call('{ agentType: CONTROLLER, schema: {} }')), []);
+	assert.deepEqual(workflowProblems("demo", call('{ agentType: "aria-orchestrator:security" }')), []);
+	assert.deepEqual(workflowProblems("demo", call('{ agentType: "Explore", model: "sonnet", effort: "medium" }')), []);
+	assert.match(workflowProblems("demo", call("{ schema: {} }")).join(), /agent\(\) at line 8 names no model/);
+	assert.match(workflowProblems("demo", call('{ agentType: "Explore" }')).join(), /agent\(\) at line 8 uses the built-in "Explore" without a model/);
+	assert.match(workflowProblems("demo", GOOD.replace('agent("Read the spec", { schema: { type: "object" }, model: "sonnet", effort: "low" })', 'agent("Read the spec")')).join(), /agent\(\) at line 8 names no model/);
 });

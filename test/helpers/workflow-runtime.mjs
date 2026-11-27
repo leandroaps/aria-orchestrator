@@ -14,15 +14,21 @@ const WORKFLOWS = join(import.meta.dirname, "..", "..", "workflows");
 // `agentImpl(prompt, options)` returns the agent's result, or null for an
 // agent that stopped. A throw inside a pipeline stage leaves null in its
 // slot, as the runtime does.
-export async function runWorkflow(name, args, agentImpl) {
+// `tokensPerAgent` feeds the runtime's `budget`: every finished agent call
+// adds that many output tokens to `budget.spent()`.
+export async function runWorkflow(name, args, agentImpl, { tokensPerAgent = 1000 } = {}) {
 	const split = splitWorkflow(readFileSync(join(WORKFLOWS, `${name}.js`), "utf8"));
 	if (split.error) throw new Error(split.error);
 	const calls = [];
 	const phases = [];
 	const logs = [];
+	let spent = 0;
+	const budget = { total: null, spent: () => spent, remaining: () => Infinity };
 	const agent = async (prompt, options = {}) => {
 		calls.push({ prompt, ...options });
-		return agentImpl(prompt, options);
+		const result = await agentImpl(prompt, options);
+		spent += tokensPerAgent;
+		return result;
 	};
 	const pipeline = async (items, ...stages) => {
 		const results = [];
@@ -40,7 +46,7 @@ export async function runWorkflow(name, args, agentImpl) {
 	const parallel = (tasks) => Promise.all(tasks.map((task) => (typeof task === "function" ? task() : task)));
 	const phase = (title) => phases.push(title);
 	const log = (message) => logs.push(message);
-	const script = new AsyncFunction("agent", "pipeline", "parallel", "phase", "log", "args", split.body);
-	const result = await script(agent, pipeline, parallel, phase, log, args);
+	const script = new AsyncFunction("agent", "pipeline", "parallel", "phase", "log", "args", "budget", split.body);
+	const result = await script(agent, pipeline, parallel, phase, log, args, budget);
 	return { meta: split.meta, result, calls, phases, logs };
 }
