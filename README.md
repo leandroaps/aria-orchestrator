@@ -101,6 +101,16 @@ npm test                # node:test, no dependencies
 npm run validate:plugin # claude plugin validate --strict
 ```
 
+The project page at <https://aria-orchestrator.dev> lives in `site/`, a
+separate package with its own dependencies (React, Vite, Wrangler):
+
+```bash
+cd site && npm install && npm test   # builds dist/ and tests it
+```
+
+Phase status on the page comes from `docs/plan/status.json`; update it in
+the pull request that lands a phase.
+
 ### Pull requests
 
 - Pull requests are opened by the `farofino-bot` GitHub App, never by a

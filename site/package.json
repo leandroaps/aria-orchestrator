@@ -1,0 +1,24 @@
+{
+  "name": "aria-orchestrator-site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The project page at aria-orchestrator.dev, prerendered with React and served by Cloudflare Workers.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "vite build --ssr src/render.jsx --outDir dist-ssr && node scripts/build.mjs",
+    "pretest": "npm run build",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "vite": "8.4.0",
+    "wrangler": "4.169.0"
+  }
+}

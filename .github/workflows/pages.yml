@@ -1,12 +1,8 @@
 name: pages
 
-# Publishes the static landing page in site/ to GitHub Pages.
+# Former GitHub Pages deploy. The site now lives on Cloudflare (site.yml);
+# Pages keeps serving its last deploy until this workflow is removed.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "site/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:

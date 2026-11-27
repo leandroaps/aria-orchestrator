@@ -1,0 +1,46 @@
+{
+  "description": "ARIA simplifica el ciclo de vida del desarrollo de software con orquestación inteligente de múltiples agentes.",
+  "install": {
+    "title": "Instalación",
+    "intro": "En Claude Code:",
+    "prealpha": "Prealfa: aún no se puede usar. La v0.1.0 se publica tras la validación real.",
+    "latest": "Última versión: {tag}.",
+    "config": "Configurar un repositorio"
+  },
+  "status": {
+    "title": "Estado",
+    "states": {
+      "done": "Completada",
+      "in-progress": "En curso",
+      "next": "Siguiente"
+    },
+    "phases": {
+      "P0": "Estructura inicial",
+      "P1": "Motor",
+      "P2": "Configuración",
+      "P3": "CLI",
+      "P4": "Hooks",
+      "P5": "Skills, agentes, flujos de trabajo",
+      "P6": "Prueba de extremo a extremo",
+      "P7": "Validación real",
+      "P8": "Migración de Bernardo (aparte, más adelante)"
+    },
+    "plan": "Leer el plan"
+  },
+  "releases": {
+    "title": "Versiones",
+    "empty": "Aún no hay versiones. Consulta el estado más arriba.",
+    "prerelease": "preliminar",
+    "all": "Todas las versiones"
+  },
+  "footer": {
+    "repository": "Repositorio",
+    "license": "Licencia MIT",
+    "author": "Diseñado y desarrollado con ❤️ por Leandro Aparecido de Siqueira. Todos los derechos reservados."
+  },
+  "controls": {
+    "language": "Idioma",
+    "themeToLight": "Tema claro",
+    "themeToDark": "Tema oscuro"
+  }
+}
