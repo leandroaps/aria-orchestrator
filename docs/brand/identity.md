@@ -101,7 +101,7 @@ signature (name, descriptor, slogan) is built in and hidden; set
 first load, skipped under `prefers-reduced-motion`.
 
 It is published to GitHub Pages at
-<https://www.leandroaps.com.br/aria-orchestrator/> by
+<https://leandroaps.github.io/aria-orchestrator/> by
 `.github/workflows/pages.yml`, on every push to `main` that touches
 `site/`. The Open Graph URLs are absolute and point there; change them in
 `site/index.html` (and the brand test) if the page moves to another domain.

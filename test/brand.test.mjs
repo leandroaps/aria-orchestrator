@@ -96,7 +96,7 @@ test("landing page: metadata, logo only, no external request", () => {
 	assert.match(page, /prefers-reduced-motion: no-preference/);
 	// Open Graph needs absolute URLs: they must point at the GitHub Pages
 	// site and at a file that exists in site/.
-	const PAGES = "https://www.leandroaps.com.br/aria-orchestrator/";
+	const PAGES = "https://leandroaps.github.io/aria-orchestrator/";
 	assert.match(page, new RegExp(`property="og:url" content="${PAGES}"`));
 	const ogImage = page.match(/property="og:image" content="([^"]+)"/)[1];
 	assert.ok(ogImage.startsWith(PAGES), "og:image points at the Pages site");
