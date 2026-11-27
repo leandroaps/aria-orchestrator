@@ -1,0 +1,10 @@
+{
+  "name": "aria-orchestrator",
+  "version": "0.0.1",
+  "description": "Spec-driven SDLC orchestration for Claude Code, with approval, territory and evidence rules enforced by code.",
+  "author": {
+    "name": "Leandro A. Siqueira"
+  },
+  "license": "MIT",
+  "keywords": ["orchestration", "sdlc", "specs", "agents", "workflow"]
+}

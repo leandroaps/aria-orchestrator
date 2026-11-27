@@ -1,0 +1,14 @@
+{
+  "name": "aria",
+  "description": "ARIA: spec-driven SDLC orchestration for Claude Code.",
+  "owner": {
+    "name": "Leandro A. Siqueira"
+  },
+  "plugins": [
+    {
+      "name": "aria-orchestrator",
+      "source": "./",
+      "description": "Spec-driven SDLC orchestration for Claude Code, with approval, territory and evidence rules enforced by code."
+    }
+  ]
+}
