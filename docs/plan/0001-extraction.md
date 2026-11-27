@@ -155,7 +155,15 @@ Each phase ends green on `npm test` in aria before the next starts.
   - **P3.2** — the run commands that map today's `agent-run` (`create`,
     `plan`, `status`, `record-approval`, `start`, `verify`, `accept`,
     `ready`, `fail`, `resume`, `recover-lock`, `cancel`), with the terminal
-    layer of plan 0002 (B2) for `aria status`.
+    layer of plan 0002 (B2) for `aria status`. Two pull requests:
+    - **P3.2a** — `aria run <command>`, with plain and `--json` output. The
+      logic lives in `lib/run-controller.mjs`. `record-approval` accepts
+      only events whose digest matches the plugin's own
+      `hooks/question-hook.mjs`, so it refuses until P4 ships that hook.
+      `record-approval` and `cancel` refuse a `--root` other than the
+      current repository.
+    - **P3.2b** — the terminal layer and `aria status`: the run summary
+      with the next step, which `agent-run status --brief` gave.
   - Each part moves to the phase that builds what it reads. `validate
     contracts` checks agents and skills, so it moves to P5. `gate` is the
     pre-push gate a hook triggers, so it moves to P4. So do

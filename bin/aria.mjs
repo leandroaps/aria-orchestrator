@@ -1,19 +1,35 @@
 #!/usr/bin/env node
 // The `aria` command line. Plan 0001 P3.1: validators, scope and impact
-// classification. P3.2 adds the run commands to the same table.
+// classification. P3.2: the run commands (`aria run <command>`).
 //
 // Exit codes: 0 ok, 1 findings or a refused check, 2 usage error (unknown
 // command or spec, missing argument, unreadable input).
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { scrubGitLocationEnv } from "../lib/approval-registry.mjs";
+import { RUN_ID_PATTERN, scrubGitLocationEnv } from "../lib/approval-registry.mjs";
 import { CONFIG_FILE, ConfigError, loadConfig } from "../lib/config.mjs";
 import { buildExecutionGraph, listSpecDirs, resolveSpec } from "../lib/execution-graph.mjs";
 import { ScopeError, changedScope, classifyImpact } from "../lib/impact.mjs";
+import {
+	TASK_ID_PATTERN,
+	acceptCommand,
+	cancelCommand,
+	createCommand,
+	failCommand,
+	planCommand,
+	readyCommand,
+	recordApprovalCommand,
+	recoverLockCommand,
+	resumeCommand,
+	startCommand,
+	statusCommand,
+	verifyCommand,
+} from "../lib/run-controller.mjs";
 import { compareHandoffToDelta, hardenedGit, snapshotTree, treeDelta } from "../lib/run-evidence.mjs";
+import { DEFECT_CATEGORIES, LOCK_KEY_PATTERN } from "../lib/run-state.mjs";
 import {
 	graphFindings,
 	handoffOwnershipFindings,
@@ -37,6 +53,22 @@ Commands:
   classify --base <ref> --head <ref>    Reviews a change requires
            [--files <list.json>]        ...from a JSON list of files instead
            [--manual <reviewers.json>]  ...plus {"required": [...]} from the spec
+
+Run commands (one orchestration run of a spec):
+  run create <spec>                     Create a run from the spec's plan
+  run plan <run-id>                     Present the plan for the owner's approval
+  run status <run-id>                   State, plan digests and approval
+  run record-approval <run-id>          Record the owner's click on the plan
+           [--event <event-id>]         ...naming the approval event
+  run start <run-id> <task>             Dispatch a ready task
+  run verify <run-id> <task>            Run the task's checks on the current tree
+  run accept <run-id> <task> <file.json>  Accept the worker's handoff, or refuse it
+  run ready <run-id>                    Tasks and which can be dispatched now
+  run fail <run-id> <task> --category <c> --repro <case> [--requirement <R#.#>]
+                                        Record a failure; the third one blocks
+  run resume <run-id>                   Revalidate a run after an interruption
+  run recover-lock <key>                Free a lock whose holder is gone
+  run cancel <run-id> --reason <text>   End a superseded run
 
 Options:
   --root <dir>      Repository root (default: the git top level of the
@@ -237,6 +269,193 @@ function classify(ctx) {
 	return result.undeclared.length === 0 ? 0 : 1;
 }
 
+// --- Run commands ----------------------------------------------------------------
+
+const list = (items) => (items.length > 0 ? items.join(", ") : "none");
+
+// A refusal by the run contract (an Error from the controller) exits 1 with
+// its message; usage and config errors keep their own handling in `main`.
+function runCommand(ctx, execute, render) {
+	let result;
+	try {
+		result = execute();
+	} catch (error) {
+		if (error instanceof UsageError || error instanceof ConfigError) throw error;
+		if (ctx.json) {
+			ctx.out.stdout(JSON.stringify({ ok: false, error: error.message, problems: error.problems }));
+		} else {
+			ctx.out.stderr(`aria ${ctx.command}: ${error.message}`);
+			for (const problem of error.problems ?? []) ctx.out.stderr(`  - ${problem}`);
+		}
+		return 1;
+	}
+	if (ctx.json) ctx.out.stdout(JSON.stringify(result));
+	else for (const line of render(result)) ctx.out.stdout(line);
+	return result.ok === false ? 1 : 0;
+}
+
+// An approval and a cancellation only act on the repository the command runs
+// in: `--root` pointing anywhere else is refused.
+function requireOwnCheckout(ctx) {
+	if (realpathSync(ctx.root) !== realpathSync(gitTopLevel(ctx.cwd))) {
+		throw new Error(`--root points at another repository; ${ctx.command} only acts on the one of the current directory`);
+	}
+}
+
+function checkLines(results) {
+	const lines = [];
+	for (const result of results) {
+		lines.push(`  ${result.passed ? "pass" : "fail"}  ${result.command}`);
+		if (!result.passed) {
+			if (result.error) lines.push(`        ${result.error}`);
+			for (const line of (result.output_tail ?? "").split("\n").filter(Boolean)) lines.push(`        ${line}`);
+		}
+	}
+	return lines;
+}
+
+function runCreate(ctx, [arg]) {
+	const spec = resolveSpecName(ctx, arg);
+	return runCommand(ctx, () => createCommand(ctx.root, { spec }), ({ run }) => [
+		`Run ${run.run_id} created for ${run.spec}: ${run.state}.`,
+		`Next: aria run plan ${run.run_id}`,
+	]);
+}
+
+function runPlan(ctx, [runId]) {
+	return runCommand(ctx, () => planCommand(ctx.root, { runId }), (plan) => [
+		...plan.tasks.map(
+			(task) =>
+				`  ${task.id}  ${task.owner}  depends on: ${list(task.depends_on)}  paths: ${list(task.allowed_paths)}`,
+		),
+		`Run ${runId} (${plan.spec}): ${plan.state}, approval prefix ${plan.approval_prefix}.`,
+		plan.instruction,
+	]);
+}
+
+function runStatus(ctx, [runId]) {
+	return runCommand(ctx, () => statusCommand(ctx.root, { runId }), (status) => {
+		const lines = [`Run ${runId} (${status.spec}): ${status.state}`];
+		if (!status.approval) lines.push("approval: none");
+		else if (status.approval.valid) lines.push(`approval: valid (event ${status.approval.event_id})`);
+		else lines.push(`approval: not valid — ${status.approval.reasons.join("; ")}`);
+		if (status.plan_digest_current !== status.plan_digest_recorded) {
+			lines.push("plan: changed since it was last recorded; present it again");
+		}
+		if (status.invalid_event_lines > 0) {
+			lines.push(`events: ${plural(status.invalid_event_lines, "unreadable line")}`);
+		}
+		return lines;
+	});
+}
+
+function runRecordApproval(ctx, [runId]) {
+	return runCommand(
+		ctx,
+		() => {
+			requireOwnCheckout(ctx);
+			return recordApprovalCommand(ctx.root, { runId, eventId: ctx.options.event }, ctx.env);
+		},
+		(result) => [`Run ${runId}: ${result.state} (event ${result.approval.event_id}).`],
+	);
+}
+
+function runStart(ctx, [runId, taskId]) {
+	return runCommand(ctx, () => startCommand(ctx.root, { runId, taskId }), (result) => [
+		`${taskId} started in run ${runId}, attempt ${result.attempt}.`,
+	]);
+}
+
+function runVerify(ctx, [runId, taskId]) {
+	return runCommand(ctx, () => verifyCommand(ctx.root, { runId, taskId }), (result) => [
+		...checkLines(result.results),
+		`${taskId}: verification ${result.passed ? "passed" : "failed"}.`,
+	]);
+}
+
+function runAccept(ctx, [runId, taskId, file]) {
+	const handoff = readJsonFile(resolve(ctx.cwd, file), "handoff");
+	if (typeof handoff !== "object" || handoff === null || Array.isArray(handoff)) {
+		throw new UsageError(`handoff "${file}" must hold a JSON object`);
+	}
+	return runCommand(ctx, () => acceptCommand(ctx.root, { runId, taskId, handoff }), (result) => {
+		const lines = [
+			...result.delta.map((path) => `  changed  ${path}`),
+			...result.findings.map((finding) => `  fail  ${finding}`),
+			...checkLines((result.verification?.results ?? []).filter((check) => !check.passed)),
+		];
+		if (result.ok) lines.push(`${taskId} accepted: ${plural(result.delta.length, "file")} changed.`);
+		else {
+			lines.push(
+				`${taskId} refused: ${plural(result.findings.length, "finding")}; ` +
+					`${result.routing.decision}: ${result.routing.reason}.`,
+			);
+		}
+		return lines;
+	});
+}
+
+function runReady(ctx, [runId]) {
+	return runCommand(ctx, () => readyCommand(ctx.root, { runId }), (result) => [
+		...result.tasks.map((task) => {
+			const why = [...task.blockers, ...task.conflicts];
+			if (task.defect_blocked) why.push("attempt limit reached");
+			return `  ${task.id}  ${task.state}${why.length > 0 ? `  (blocked: ${why.join("; ")})` : ""}`;
+		}),
+		`Run ${runId}: ${result.state}; dispatchable: ${list(result.dispatchable)}.`,
+	]);
+}
+
+function runFail(ctx, [runId, taskId]) {
+	const { category, repro: reproduction, requirement } = ctx.options;
+	return runCommand(
+		ctx,
+		() => failCommand(ctx.root, { runId, taskId, category, reproduction, requirement }),
+		({ routing }) => [`${taskId} failed in run ${runId}: ${routing.decision} (${routing.reason}).`],
+	);
+}
+
+function runResume(ctx, [runId]) {
+	return runCommand(ctx, () => resumeCommand(ctx.root, { runId }), (result) => {
+		if (!result.ok) return [`Run ${runId} not resumed: ${result.reason}`];
+		const lines = [
+			...result.tasks.map((task) => `  ${task.id}  ${task.state}`),
+			`Run ${runId} resumed: ${result.state}.`,
+		];
+		if (!result.approval.valid) lines.push(`approval: not valid — ${result.approval.reasons.join("; ")}`);
+		return lines;
+	});
+}
+
+function runRecoverLock(ctx, [key]) {
+	return runCommand(ctx, () => recoverLockCommand(ctx.root, { key }), (result) => [
+		`Lock ${key} ${result.recovered ? "recovered" : "not recovered"}: ${result.reason}.`,
+	]);
+}
+
+function runCancel(ctx, [runId]) {
+	const reason = ctx.options.reason.trim();
+	if (!reason) throw new UsageError("run cancel: --reason must not be empty");
+	return runCommand(
+		ctx,
+		() => {
+			requireOwnCheckout(ctx);
+			return cancelCommand(ctx.root, { runId, reason });
+		},
+		(result) => {
+			if (!result.ok) return [`Run ${runId} not cancelled: ${result.reason}.`];
+			return [
+				`Run ${runId} cancelled.`,
+				`released locks: ${list(result.released)}`,
+				`tasks now unknown: ${list(result.unknown_tasks)}`,
+				...Object.entries(result.unaccepted_paths).map(
+					([task, paths]) => `  ${task} left unaccepted: ${paths === null ? "unknown" : list(paths)}`,
+				),
+			];
+		},
+	);
+}
+
 // `args`: positional names, `?` marks an optional one. `options`: the
 // command-specific flags it accepts.
 const COMMANDS = {
@@ -247,6 +466,23 @@ const COMMANDS = {
 	"validate run": { run: validateRun, args: ["run-id?"] },
 	scope: { run: scope, args: [], options: ["base", "head"], requires: ["base", "head"] },
 	classify: { run: classify, args: [], options: ["base", "head", "files", "manual"] },
+	"run create": { run: runCreate, args: ["spec"] },
+	"run plan": { run: runPlan, args: ["run-id"] },
+	"run status": { run: runStatus, args: ["run-id"] },
+	"run record-approval": { run: runRecordApproval, args: ["run-id"], options: ["event"] },
+	"run start": { run: runStart, args: ["run-id", "task"] },
+	"run verify": { run: runVerify, args: ["run-id", "task"] },
+	"run accept": { run: runAccept, args: ["run-id", "task", "file"] },
+	"run ready": { run: runReady, args: ["run-id"] },
+	"run fail": {
+		run: runFail,
+		args: ["run-id", "task"],
+		options: ["category", "repro", "requirement"],
+		requires: ["category", "repro"],
+	},
+	"run resume": { run: runResume, args: ["run-id"] },
+	"run recover-lock": { run: runRecoverLock, args: ["key"] },
+	"run cancel": { run: runCancel, args: ["run-id"], options: ["reason"], requires: ["reason"] },
 };
 
 const OPTIONS = {
@@ -257,6 +493,22 @@ const OPTIONS = {
 	head: { type: "string" },
 	files: { type: "string" },
 	manual: { type: "string" },
+	event: { type: "string" },
+	category: { type: "string" },
+	repro: { type: "string" },
+	requirement: { type: "string" },
+	reason: { type: "string" },
+};
+
+// Identifiers that become paths or lock names are checked before any use.
+const ARG_PATTERNS = {
+	"run-id": [RUN_ID_PATTERN, "a run id such as 20260101T120000Z-0a1b2c"],
+	task: [TASK_ID_PATTERN, "a task id such as T1"],
+	key: [LOCK_KEY_PATTERN, "a lock key such as resource:port:3000"],
+};
+const OPTION_PATTERNS = {
+	category: [new RegExp(`^(?:${DEFECT_CATEGORIES.join("|")})$`), `one of ${DEFECT_CATEGORIES.join(", ")}`],
+	requirement: [/^R\d+(?:\.\d+)*$/, "a requirement id such as R1.2"],
 };
 
 function findCommand(positionals) {
@@ -282,6 +534,19 @@ function checkUsage(name, command, rest, values) {
 	for (const option of command.requires ?? []) {
 		if (!values[option]) throw new UsageError(`${name}: --${option} is required`);
 	}
+	// Run commands act on what they name. `validate run` only inspects, and
+	// reports a malformed run id as a finding instead.
+	command.args.forEach((arg, index) => {
+		const [pattern, expected] = name.startsWith("run ") ? (ARG_PATTERNS[arg] ?? []) : [];
+		if (pattern && rest[index] !== undefined && !pattern.test(rest[index])) {
+			throw new UsageError(`${name}: "${rest[index]}" is not ${expected}`);
+		}
+	});
+	for (const [option, [pattern, expected]] of Object.entries(OPTION_PATTERNS)) {
+		if (values[option] !== undefined && !pattern.test(values[option])) {
+			throw new UsageError(`${name}: --${option} must be ${expected} (found "${values[option]}")`);
+		}
+	}
 	if (name === "classify" && !values.files && !(values.base && values.head)) {
 		throw new UsageError("classify: give --base and --head, or --files");
 	}
@@ -302,7 +567,17 @@ function gitTopLevel(cwd) {
 	}
 }
 
-export function main(argv, out = { stdout: console.log, stderr: console.error }) {
+// The plugin this binary belongs to: its question hook is the only one whose
+// events approve a plan.
+const PLUGIN_ROOT = join(import.meta.dirname, "..");
+
+// `env` exists for in-process tests: the working directory, and a plugin
+// root with a question hook they know. The binary never passes it.
+export function main(
+	argv,
+	out = { stdout: console.log, stderr: console.error },
+	{ cwd = process.cwd(), pluginRoot = PLUGIN_ROOT } = {},
+) {
 	// Inherited GIT_DIR and the like never choose the repository.
 	scrubGitLocationEnv();
 	let values;
@@ -323,10 +598,13 @@ export function main(argv, out = { stdout: console.log, stderr: console.error })
 		out.stderr(`${given}\n\n${USAGE}`);
 		return 2;
 	}
-	const root = values.root ? resolve(values.root) : gitTopLevel(process.cwd());
+	const root = values.root ? resolve(cwd, values.root) : gitTopLevel(cwd);
 	let config;
 	const ctx = {
 		root,
+		cwd,
+		command: found.name,
+		env: { pluginRoot },
 		json: values.json,
 		options: values,
 		out,

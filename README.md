@@ -74,9 +74,10 @@ Exit codes: 0 valid, 1 invalid, 2 usage error.
 
 ## Command line
 
-`node bin/aria.mjs --help` lists every command. All of them are read-only,
-take `--root` (default: the git top level of the current directory) and
-`--json`, and exit 0 when clean, 1 on findings, 2 on a usage error.
+`node bin/aria.mjs --help` lists every command. All of them take `--root`
+(default: the git top level of the current directory) and `--json`, and
+exit 0 when clean, 1 on findings or a refusal, 2 on a usage error. The
+checks below are read-only.
 
 | Command | Checks |
 |---|---|
@@ -93,6 +94,32 @@ Changes to the files that govern the orchestration (`aria.config.json`,
 CI workflows, `CODEOWNERS`, `package.json`) always require the `security`
 reviewer. That list lives in code, so a change cannot remove it by editing
 the config.
+
+### Runs
+
+`aria run <command>` drives one orchestration run of a spec. Its state lives
+in `.aria/runs/<run-id>/`; locks and approval events live in the git common
+dir, so every worktree sees them.
+
+| Command | Does |
+|---|---|
+| `run create <spec>` | Creates a run from the spec's plan; an invalid graph refuses it |
+| `run plan <run-id>` | Presents the plan and gives the prefix the owner approves |
+| `run status <run-id>` | State, plan digests and whether the approval still holds |
+| `run record-approval <run-id> [--event <id>]` | Records the owner's click on the plan |
+| `run start <run-id> <task>` | Dispatches a task whose dependencies are accepted |
+| `run verify <run-id> <task>` | Runs the task's checks on a snapshot of the current tree |
+| `run accept <run-id> <task> <handoff.json>` | Compares the handoff with the real change, runs the checks, accepts or routes a defect |
+| `run ready <run-id>` | Each task's state and which can be dispatched now |
+| `run fail <run-id> <task> --category <c> --repro <case>` | Records a failure; the third of the same defect blocks the run |
+| `run resume <run-id>` | Revalidates every task after an interruption |
+| `run recover-lock <key>` | Frees a lock only when its holder provably stopped using it |
+| `run cancel <run-id> --reason <text>` | Ends a superseded run and releases its locks |
+
+Only the owner's click on the approval question approves a plan. The
+plugin's question hook records it, and `record-approval` accepts only events
+written by that hook. `record-approval` and `cancel` refuse a `--root` other
+than the repository of the current directory.
 
 ## Development
 
