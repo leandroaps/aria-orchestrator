@@ -171,7 +171,17 @@ Each phase ends green on `npm test` in aria before the next starts.
     to P5.
 - **P4 — Hooks.** Tool guard, question hook, prompt hook, push gate (with
   `aria gate`) wired in `hooks/hooks.json`; approval label from `locales/`. Port the tool-guard
-  self-tests (with neutral paths) to `node:test`.
+  self-tests (with neutral paths) to `node:test`. Done in one pull request.
+  Differences from bernardo-pet:
+  - the push gate runs aria's checks in-process (config, changed specs and
+    graphs, required reviewers) instead of the project's npm scripts, and
+    compares with the remote's default branch;
+  - the `pr` agent may run plain `gh` publish and read commands; the
+    farofino-bot token wrapper is project-specific and stays in bernardo;
+  - read-only auditors may run the `aria` read commands (`validate`,
+    `scope`, `classify`, `status`, `run status`, `run ready`);
+  - the approval question names the spec by its full directory name and
+    exists in `en` and `pt-BR`.
 - **P5 — Skills, agents, workflows.** Translate and generalize the process
   skills and the five core agents; rename workflows; spec templates;
   `aria validate contracts` and the workflow commands (`check-workflows`,

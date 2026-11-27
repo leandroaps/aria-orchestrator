@@ -9,6 +9,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { approvalQuestion } from "../lib/approval-template.mjs";
 import { HANDOFF_T1, aria, approvedRun, create, handoff, presentAndClick, run } from "./helpers/run-cli.mjs";
 import { SPEC, git, workspace, writeFile } from "./helpers/workspace.mjs";
 
@@ -44,6 +45,8 @@ test("run plan: moves to awaiting_approval and gives the approval prefix", (t) =
 	assert.match(plan.approval_prefix, /^[0-9a-f]{12}$/);
 	assert.ok(plan.plan_digest.startsWith(plan.approval_prefix));
 	assert.match(plan.instruction, /AskUserQuestion/);
+	// The exact question the hook accepts, in the config's locale.
+	assert.deepEqual(plan.approval_question, approvalQuestion({ runId, spec: SPEC, prefix: plan.approval_prefix }, "en"));
 	assert.deepEqual(
 		plan.tasks.map((task) => [task.id, task.owner, task.depends_on]),
 		[

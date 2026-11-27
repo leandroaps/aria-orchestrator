@@ -31,6 +31,7 @@ import {
 	verifyCommand,
 } from "../lib/run-controller.mjs";
 import { renderRunStatus } from "../lib/experience/run-status.mjs";
+import { manualGate } from "../lib/push-gate.mjs";
 import { createTheme, detectTerminal } from "../lib/experience/terminal.mjs";
 import { compareHandoffToDelta, hardenedGit, snapshotTree, treeDelta } from "../lib/run-evidence.mjs";
 import { DEFECT_CATEGORIES, LOCK_KEY_PATTERN } from "../lib/run-state.mjs";
@@ -57,6 +58,10 @@ Commands:
   classify --base <ref> --head <ref>    Reviews a change requires
            [--files <list.json>]        ...from a JSON list of files instead
            [--manual <reviewers.json>]  ...plus {"required": [...]} from the spec
+
+Gate:
+  gate                                  The checks a push must pass: config,
+                                        changed specs and graphs, reviewers
 
 Status:
   status [<run-id>]                     A run at a glance and its next step
@@ -339,7 +344,8 @@ function runPlan(ctx, [runId]) {
 				`  ${task.id}  ${task.owner}  depends on: ${list(task.depends_on)}  paths: ${list(task.allowed_paths)}`,
 		),
 		`Run ${runId} (${plan.spec}): ${plan.state}, approval prefix ${plan.approval_prefix}.`,
-		plan.instruction,
+		`Ask the owner with AskUserQuestion, exactly: header "${plan.approval_question.header}", question "${plan.approval_question.question}", options ${plan.approval_question.options.map((option) => `"${option.label}" (${option.description})`).join(" and ")}. Use --json for the exact object.`,
+		`Only their click approves; then run "aria run record-approval ${runId}".`,
 	]);
 }
 
@@ -466,6 +472,21 @@ function runCancel(ctx, [runId]) {
 	);
 }
 
+// --- Gate --------------------------------------------------------------------------
+
+// The push gate's checks, by hand, on the worktree of the current directory.
+function gateCommand(ctx) {
+	const result = manualGate({ cwd: ctx.root });
+	if (ctx.json) {
+		ctx.out.stdout(JSON.stringify(result));
+	} else {
+		for (const check of result.checks) ctx.out.stdout(`  pass  ${check}`);
+		if (result.allow) ctx.out.stdout(`gate: ${plural(result.checks.length, "check")} passed.`);
+		else ctx.out.stderr(result.message);
+	}
+	return result.allow ? 0 : 1;
+}
+
 // --- Status ------------------------------------------------------------------------
 
 function status(ctx, [given]) {
@@ -495,6 +516,7 @@ const COMMANDS = {
 	"validate run": { run: validateRun, args: ["run-id?"] },
 	scope: { run: scope, args: [], options: ["base", "head"], requires: ["base", "head"] },
 	classify: { run: classify, args: [], options: ["base", "head", "files", "manual"] },
+	gate: { run: gateCommand, args: [] },
 	status: { run: status, args: ["run-id?"], options: ["verbose", "debug"] },
 	"run create": { run: runCreate, args: ["spec"] },
 	"run plan": { run: runPlan, args: ["run-id"] },
