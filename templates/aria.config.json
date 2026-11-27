@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/leandroaps/aria-orchestrator/main/schema/aria.config.schema.json",
+  "version": 1,
+  "locale": "en",
+  "agents": {
+    "backend": {
+      "mode": "write",
+      "category": "implementation",
+      "allowedPaths": ["src/server/**", "src/lib/**"],
+      "defaultVerification": ["npm test"]
+    },
+    "frontend": {
+      "mode": "write",
+      "category": "implementation",
+      "allowedPaths": ["src/app/**", "src/components/**"],
+      "defaultVerification": ["npm test"]
+    },
+    "test": {
+      "mode": "write",
+      "category": "test",
+      "allowedPaths": ["test/**"],
+      "defaultVerification": ["npm test"]
+    },
+    "security": {
+      "mode": "read-only",
+      "category": "audit",
+      "allowedPaths": [],
+      "defaultVerification": []
+    }
+  },
+  "impactRules": [
+    {
+      "agent": "security",
+      "requirement": "required",
+      "rule": "auth-and-data-access",
+      "match": ["src/lib/auth/**", "src/server/db/**"]
+    }
+  ],
+  "specs": {
+    "dir": "specs"
+  },
+  "evidence": {
+    "generatedInputs": []
+  },
+  "run": {
+    "externalResources": []
+  }
+}

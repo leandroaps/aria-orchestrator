@@ -127,6 +127,14 @@ Consumer repo gets `aria.config.json` and keeps runtime state under `.aria/`
   empty-token guard stays mandatory when `github-app` is set.
 - `locale`: `en` | `pt-BR`.
 
+P2 ships the keys the engine reads today: `version`, `agents`,
+`impactRules`, `specs.dir`, `evidence.generatedInputs`,
+`run.externalResources` and `locale`. Unknown keys are errors, so a typo
+never passes silently. The others (`specs` roadmap and ID pattern,
+`impact.highImpactPaths`, `gate.prePush`, `pr.identity`) are added to the
+schema and the loader in the phase that builds what reads them (P3/P4), so
+the config never accepts a setting that does nothing.
+
 ## Phases
 
 Each phase ends green on `npm test` in aria before the next starts.

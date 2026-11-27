@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/leandroaps/aria-orchestrator/blob/main/schema/aria.config.schema.json",
+  "title": "ARIA configuration",
+  "description": "aria.config.json at the root of a repository orchestrated by ARIA. lib/config.mjs is the validator the engine runs; this schema describes the same rules for editors and documentation, and the tests keep the two in step. One rule is checked only by the loader: an impact rule must name an agent declared in \"agents\".",
+  "type": "object",
+  "required": ["version", "agents"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "Path or URL of this schema, for editor support. Ignored by ARIA.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Version of the config format.",
+      "const": 1
+    },
+    "agents": {
+      "description": "The project's agents, by name. Each write agent owns a territory of paths; read-only agents audit and own none.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/agent" }
+    },
+    "impactRules": {
+      "description": "Reviews that a change touching the matched paths requires or recommends. The plugin's own bootstrap rule is fixed in code and cannot be removed here.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/impactRule" },
+      "default": []
+    },
+    "specs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dir": {
+          "description": "Folder holding one directory per spec.",
+          "$ref": "#/$defs/containedPath",
+          "default": "specs"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "generatedInputs": {
+          "description": "Generated files that a task may read as input, so evidence counts them even when they are git-ignored.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/containedPath" },
+          "default": []
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "externalResources": {
+          "description": "Resource prefixes whose exclusive use a local lock cannot prove (a database branch, a deploy target). Added to the fixed prefixes \"external\" and \"ci\".",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "default": []
+        }
+      }
+    },
+    "locale": {
+      "description": "Language of the approval label and the questions ARIA asks.",
+      "enum": ["en", "pt-BR"],
+      "default": "en"
+    }
+  },
+  "$defs": {
+    "agent": {
+      "type": "object",
+      "required": ["mode", "category", "allowedPaths", "defaultVerification"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["read-only", "write"] },
+        "category": {
+          "description": "Free-form group, e.g. implementation, test, audit.",
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedPaths": {
+          "description": "Globs the agent may write. A leading ! excludes a path. Must be empty for a read-only agent.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "defaultVerification": {
+          "description": "Commands that verify the agent's tasks when a task declares none.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "if": { "properties": { "mode": { "const": "read-only" } } },
+      "then": { "properties": { "allowedPaths": { "maxItems": 0 } } }
+    },
+    "impactRule": {
+      "type": "object",
+      "required": ["agent", "requirement", "rule", "match"],
+      "additionalProperties": false,
+      "properties": {
+        "agent": { "description": "An agent declared in \"agents\".", "type": "string" },
+        "requirement": { "enum": ["required", "recommended"] },
+        "rule": { "description": "Name shown as the reason for the review.", "type": "string", "minLength": 1 },
+        "match": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "containedPath": {
+      "description": "A relative path inside the repository: not absolute, no .. segment.",
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "^([A-Za-z]:)?[\\\\/]|(^|[\\\\/])\\.\\.([\\\\/]|$)" }
+    }
+  }
+}
