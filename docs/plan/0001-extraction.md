@@ -221,6 +221,22 @@ Each phase ends green on `npm test` in aria before the next starts.
 - **P6 — End-to-end test.** A fixture repo created in a temp dir runs a full
   run: plan → approval → dispatch → accept → review, asserting the guards
   block out-of-territory writes and unapproved runs.
+  Done in `test/e2e.test.mjs`. No model or workflow runtime runs in a test,
+  so both are simulated (`test/helpers/workflow-runtime.mjs`,
+  `test/helpers/simulated-team.mjs`): the real workflow scripts run with
+  stand-ins for `agent()`, `pipeline()`, `phase()` and `log()`, and each
+  agent is an obedient model that runs the commands its prompt names. The
+  question hook runs as a process, and every write and command goes
+  through the real tool guard with the agent's identity. What it found:
+  - `aria-plan` reported an impact problem once per task; now once.
+  - A plan whose `allowed_paths` are globs always counts as high impact,
+    because the classifier cannot expand a glob. This is bernardo's
+    closed-when-unsure rule, kept on purpose; it means most plans get the
+    security pre-review. P7 shows whether that is too much in practice.
+  - No command moves a run to `ready_for_review` once every task is
+    accepted: the run stays `running`, and `observe`, `aria status` and the
+    workflows read "nothing pending" instead. Left as is; P7 decides
+    whether the state is needed.
 - **P7 — Real validation.** Install the plugin from the local marketplace in a
   throwaway repo and run one real spec with Claude Code; record what broke in
   `docs/validation/0001.md`. v0.1.0 is tagged only after this.

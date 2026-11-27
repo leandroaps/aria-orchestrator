@@ -70,6 +70,17 @@
     name, and `run select` belongs to the main session.
 
   Phase P5 is done. `THIRD_PARTY_NOTICES.md` credits the adapted material.
+- End-to-end test (plan 0001, phase P6), `test/e2e.test.mjs`: a fixture
+  repository with an `origin` runs the three workflows under a simulated
+  workflow runtime. The owner clicks through the real question hook, and
+  every agent's write and command first passes the real tool guard. It
+  covers a full run (plan, click, execute, the Lead's commit, review, the
+  loop stopping for review), a run that is never approved (a prefilled
+  answer, a typed approval), an approval voided by a plan change, and a
+  worker that writes out of territory: the guard denies the write, and a
+  write around the guard is refused by `accept` until the third identical
+  defect blocks the run. `aria-plan` no longer repeats an impact problem
+  once per task. Phase P6 is done.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;
