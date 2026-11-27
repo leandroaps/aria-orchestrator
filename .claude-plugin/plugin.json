@@ -6,5 +6,12 @@
     "name": "Leandro A. Siqueira"
   },
   "license": "MIT",
-  "keywords": ["orchestration", "sdlc", "specs", "agents", "workflow"]
+  "keywords": [
+    "orchestration",
+    "sdlc",
+    "specs",
+    "agents",
+    "workflow"
+  ],
+  "icon": "assets/brand/aria-icon.png"
 }

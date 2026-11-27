@@ -14,3 +14,8 @@
   snapshot verification), extracted from bernardo-pet. Project values come
   from `aria.config.json`; runtime state lives in `.aria/`. Covered by
   `node:test` suites against temporary git repositories.
+- Brand identity (plan 0002, phase B1): approved logo and its vector,
+  monogram, favicon, app and Open Graph variants; `brand-tokens.json`
+  (colours, status colours and symbols with ASCII fallbacks, fonts, copy);
+  `docs/brand/identity.md`; README header; plugin icon; static landing page
+  in `site/` that shows only the logo.

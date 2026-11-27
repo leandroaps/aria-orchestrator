@@ -1,6 +1,13 @@
+<p align="center">
+  <img src="assets/brand/aria-icon.png" width="160" alt="ARIA">
+</p>
+
 # ARIA
 
 **ARIA** (*Á-ri-a*) — **A**gentic **R**easoning and **I**ntelligent **A**utomation.
+Agentic SDLC Orchestrator.
+
+**Complexity orchestrated. Simplicity delivered.**
 
 > "Hey Aria, implement this feature."
 

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" role="img" aria-labelledby="title"><title id="title">ARIA</title><defs>
+<linearGradient id="left" gradientUnits="userSpaceOnUse" x1="310" y1="190" x2="375" y2="460"><stop stop-color="#D34FF2"/><stop offset=".56" stop-color="#942AF4"/><stop offset="1" stop-color="#6B04D8"/></linearGradient>
+<linearGradient id="ribbon" gradientUnits="userSpaceOnUse" x1="164" y1="535" x2="497" y2="430"><stop stop-color="#EA60F3"/><stop offset=".60" stop-color="#7736F3"/><stop offset="1" stop-color="#278BFA"/></linearGradient>
+<linearGradient id="right" gradientUnits="userSpaceOnUse" x1="354" y1="190" x2="566" y2="540"><stop stop-color="#D04CF2"/><stop offset=".31" stop-color="#7431F5"/><stop offset=".58" stop-color="#347DF7"/><stop offset=".82" stop-color="#00D3F6"/><stop offset="1" stop-color="#00F1F2"/></linearGradient>
+</defs><rect width="768" height="768" fill="#05061C"/>
+<path fill="url(#left)" d="M162 549 336 211 C348 190 365 180 384 180 C404 180 421 193 432 213 L384 278 307 430 243 558 Q237 565 228 565 H172 Q156 565 162 549Z"/>
+<path fill="url(#ribbon)" d="M184 506 C277 435 364 387 450 407 L496 493 C402 433 340 471 243 560 Q238 565 229 565 H172 Q156 565 162 549Z"/>
+<path fill="url(#right)" d="M336 211 C347 191 365 180 384 180 C404 180 421 193 432 213 L606 549 Q612 565 596 565 H543 Q534 565 529 556 L384 278Z"/>
+</svg>
