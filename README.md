@@ -51,6 +51,14 @@ npm test                # node:test, no dependencies
 npm run validate:plugin # claude plugin validate --strict
 ```
 
+### Pull requests
+
+- Pull requests are opened by the `farofino-bot` GitHub App, never by a
+  personal account.
+- `main` is protected: merge only through a pull request with the `test`
+  check green and an approving review from the code owner (`.github/CODEOWNERS`).
+  Force pushes and deletion are blocked, for admins too.
+
 ## License
 
 [MIT](LICENSE)
