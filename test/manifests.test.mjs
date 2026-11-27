@@ -21,6 +21,11 @@ test("marketplace lists the plugin from the repository root", () => {
 	assert.equal(entry.source, "./");
 });
 
+test("engines follows the LTS pinned in .nvmrc", () => {
+	const lts = readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim();
+	assert.equal(pkg.engines.node, `>=${lts}`);
+});
+
 test("version is semver", () => {
 	assert.match(plugin.version, /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
 });

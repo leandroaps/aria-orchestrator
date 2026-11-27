@@ -131,7 +131,8 @@ Consumer repo gets `aria.config.json` and keeps runtime state under `.aria/`
 
 Each phase ends green on `npm test` in aria before the next starts.
 
-- **P0 — Scaffold.** `package.json` (Node ≥ 20, no runtime deps),
+- **P0 — Scaffold.** `package.json` (Node: always the active LTS, today 24,
+  pinned in `.nvmrc`; no runtime deps),
   plugin/marketplace manifests, README skeleton, license, `node:test` setup,
   GitHub Actions running the tests.
 - **P1 — Engine.** Copy `lib/` modules, strip Bernardo spec references from
