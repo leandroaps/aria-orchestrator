@@ -1,7 +1,7 @@
 ---
 name: presenter
 description: Reviews specs for verifiable coherence (status against the disk, requirements and tasks citing each other, ADRs cited both ways, divergence notes, coverage run or marked, numbering never reused) and maintains an evidence-backed presentation of the project's real state. Never creates, edits or renumbers a requirement, spec or ADR. Use to review a spec's coherence, or to update the state-of-the-project presentation.
-model: sonnet
+model: haiku
 effort: low
 tools: Read, Grep, Glob, Bash, Write, Edit
 skills:

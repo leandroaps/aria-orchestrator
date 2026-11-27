@@ -249,6 +249,12 @@ Each phase ends green on `npm test` in aria before the next starts.
   on the way). The session offered no Workflow tool, so the workflows did
   not run live; P7 stays open until a second run covers them and confirms
   `aria` on the PATH.
+  Before the second run, at the owner's request, a model and token policy:
+  `lib/model-policy.mjs`, enforced by `validate contracts` and `validate
+  workflows`, with token reporting and `tokenLimit` in the workflows. The
+  `workflow-authoring` reference confirms `agentType` (resolved from the
+  Agent tool's registry), `model` and `effort` as `agent()` options, and
+  `whenToUse` in `meta`.
 - **P8 — Bernardo migration (separate, later).** A high-impact spec in
   `bernardo-pet` (security twice, owner click) swaps its scripts for the
   plugin and keeps only config and stack agents. Not part of this plan.

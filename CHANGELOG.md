@@ -89,6 +89,16 @@
     `node`;
   - English is the stated default everywhere; `locale: pt-BR` only on
     request.
+- Model and token control: `lib/model-policy.mjs` fixes the model and
+  effort of every agent and skill the plugin ships (`presenter` moves to
+  Haiku, `orchestrate` to medium effort, `reality-check` to low).
+  - `aria validate contracts` enforces the table on the plugin, and reports
+    a project agent without `model` or `effort`, which would run on the
+    session's.
+  - `aria validate workflows` reports an `agent()` that names no model;
+    `aria-plan`'s reality check now names Sonnet at medium effort.
+  - Every workflow returns the tokens spent, and `aria-execute` takes
+    `tokenLimit`, checked between rounds.
 - Project page: the name's meaning, "Agentic Reasoning and Intelligent
   Automation", right under "ARIA". The language and theme controls now
   stack above the page: on a phone, `<main>` covered them and a click on

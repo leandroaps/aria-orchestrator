@@ -13,8 +13,8 @@ const PLUGIN_ROOT = join(import.meta.dirname, "..");
 
 const skill = (name, description, body = "Body.\n") =>
 	`---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n\n${body}`;
-const agent = (name, fields, body = "Body.\n") =>
-	`---\nname: ${name}\ndescription: Does one thing. Use when asked.\n${fields}---\n\n${body}`;
+const agent = (name, fields, body = "Body.\n", { model = "sonnet", effort = "medium" } = {}) =>
+	`---\nname: ${name}\ndescription: Does one thing. Use when asked.\n${model ? `model: ${model}\n` : ""}${effort ? `effort: ${effort}\n` : ""}${fields}---\n\n${body}`;
 
 function findings(root, config = CONFIG, options = {}) {
 	return contractFindings(root, normalizeConfig(config), { pluginRoot: PLUGIN_ROOT, ...options });
@@ -125,4 +125,34 @@ test("the CLI reports findings with exit 1, and the plugin's own files are clean
 	const own = aria(["validate", "contracts"], { cwd: PLUGIN_ROOT, pluginRoot: PLUGIN_ROOT });
 	assert.equal(own.code, 0, own.stdout + own.stderr);
 	assert.match(own.stdout, /\d+ files?: 0 findings\./);
+});
+
+// The model policy: no agent falls back to the session's model, and the
+// plugin's own agents and skills follow the table in lib/model-policy.mjs.
+test("an agent without model or effort runs on the session's, which is reported", (t) => {
+	const root = workspace(t);
+	writeFile(root, ".claude/agents/backend.md", agent("backend", "tools: Read, Write\n", "Body.\n", { model: null, effort: null }));
+	writeFile(root, ".claude/agents/frontend.md", agent("frontend", "tools: Read, Write\n", "Body.\n", { effort: null }));
+	assert.deepEqual(messages(root).sort(), [
+		".claude/agents/backend.md: `effort` is not declared, so the agent runs at the session's effort",
+		".claude/agents/backend.md: `model` is not declared, so the agent runs on the session's model",
+		".claude/agents/frontend.md: `effort` is not declared, so the agent runs at the session's effort",
+	]);
+});
+
+test("the plugin's own agents and skills follow the model policy", (t) => {
+	const root = workspace(t);
+	writeFile(root, ".claude-plugin/plugin.json", '{ "name": "aria-orchestrator" }\n');
+	writeFile(root, "agents/controller.md", agent("controller", "tools: Bash, Write\n", "Body.\n", { model: "sonnet", effort: "low" }));
+	writeFile(root, "agents/helper.md", agent("helper", "tools: Read\n"));
+	writeFile(root, "skills/orchestrate/SKILL.md", `---\nname: orchestrate\neffort: high\ndescription: Use when orchestrating.\n---\n\nBody.\n`);
+	writeFile(root, "skills/extra/SKILL.md", `---\nname: extra\neffort: low\ndescription: Use when needed.\n---\n\nBody.\n`);
+	writeFile(root, "skills/spec/SKILL.md", `---\nname: spec\ndescription: Use when writing a spec.\n---\n\nBody.\n`);
+	assert.deepEqual(messages(root).sort(), [
+		'agents/controller.md: model "sonnet" differs from the model policy for controller (haiku)',
+		'agents/helper.md: "helper" has no entry in the model policy (lib/model-policy.mjs)',
+		'skills/extra/SKILL.md: "extra" has no entry in the model policy (lib/model-policy.mjs)',
+		'skills/orchestrate/SKILL.md: effort "high" differs from the model policy for orchestrate (medium)',
+		'skills/spec/SKILL.md: effort "(none)" differs from the model policy for spec (high)',
+	]);
 });
