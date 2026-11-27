@@ -6,7 +6,6 @@ const path = (relative) => new URL(`../${relative}`, import.meta.url);
 const read = (relative) => readFileSync(path(relative));
 const tokens = JSON.parse(read("assets/brand/brand-tokens.json"));
 const plugin = JSON.parse(read(".claude-plugin/plugin.json"));
-const page = read("site/index.html").toString();
 
 // Width and height from the PNG IHDR chunk.
 function pngSize(relative) {
@@ -68,47 +67,15 @@ test("the approved logo is a square PNG usable as avatar and plugin icon", () =>
 	assert.ok(statSync(path(plugin.icon)).size < 1024 * 1024, "avatar must stay under 1 MB");
 });
 
-test("site copies of the logo match their sources", () => {
-	assert.deepEqual(read("site/aria-mark.svg"), read("assets/brand/aria-mark.svg"));
-	assert.deepEqual(read("site/favicon.svg"), read("assets/brand/aria-icon.svg"));
+test("site copies of the logo match their sources (the page itself is tested in site/)", () => {
+	assert.deepEqual(read("site/public/aria-mark.svg"), read("assets/brand/aria-mark.svg"));
+	assert.deepEqual(read("site/public/favicon.svg"), read("assets/brand/aria-icon.svg"));
 });
 
 test("site raster icons have the declared sizes", () => {
-	assert.deepEqual(pngSize("site/favicon-32.png"), { width: 32, height: 32 });
-	assert.deepEqual(pngSize("site/apple-touch-icon.png"), { width: 180, height: 180 });
-	assert.deepEqual(pngSize("site/icon-192.png"), { width: 192, height: 192 });
-	assert.deepEqual(pngSize("site/icon-512.png"), { width: 512, height: 512 });
-	assert.deepEqual(pngSize("site/og-image.png"), { width: 1200, height: 630 });
-});
-
-test("landing page: metadata, logo and signature, no external request", () => {
-	assert.match(page, /<title>ARIA - Agentic SDLC Orchestrator<\/title>/);
-	assert.match(
-		page,
-		/name="description" content="ARIA simplifies the software development lifecycle through intelligent multi-agent orchestration\."/,
-	);
-	assert.match(page, /name="theme-color" content="#0B1020"/);
-	assert.match(page, /<img class="logo" src="aria-mark\.svg"[^>]* alt="[^"]+"/);
-	// Logo, then the signature: name and first slogan line in Snow,
-	// descriptor and second line in Violet.
-	assert.match(
-		page,
-		/<img class="logo"[^>]*>\s*<div class="signature">\s*<h1>ARIA<\/h1>\s*<p class="descriptor">Agentic SDLC Orchestrator<\/p>\s*<p class="slogan">Complexity orchestrated\.<\/p>\s*<p class="slogan">Simplicity delivered\.<\/p>/,
-	);
-	assert.match(page, new RegExp(`--violet: ${tokens.color.violet.value};`));
-	assert.match(page, new RegExp(`--snow: ${tokens.color.snow.value};`));
-	assert.doesNotMatch(page, /data-signature/);
-	assert.doesNotMatch(page, /<script|<nav|<header|<footer|<form|<button/i);
-	assert.doesNotMatch(page, /(src|href)="(https?:)?\/\//i, "no external request");
-	assert.match(page, /prefers-reduced-motion: no-preference/);
-	// Open Graph needs absolute URLs: they must point at the GitHub Pages
-	// site and at a file that exists in site/.
-	const PAGES = "https://leandroaps.github.io/aria-orchestrator/";
-	assert.match(page, new RegExp(`property="og:url" content="${PAGES}"`));
-	const ogImage = page.match(/property="og:image" content="([^"]+)"/)[1];
-	assert.ok(ogImage.startsWith(PAGES), "og:image points at the Pages site");
-	assert.ok(existsSync(path(`site/${ogImage.slice(PAGES.length)}`)), "og:image file exists");
-	for (const [, file] of page.matchAll(/(?:src|href|content)="([\w.-]+\.(?:svg|png|webmanifest))"/g)) {
-		assert.ok(existsSync(path(`site/${file}`)), `site/${file} is referenced but missing`);
-	}
+	assert.deepEqual(pngSize("site/public/favicon-32.png"), { width: 32, height: 32 });
+	assert.deepEqual(pngSize("site/public/apple-touch-icon.png"), { width: 180, height: 180 });
+	assert.deepEqual(pngSize("site/public/icon-192.png"), { width: 192, height: 192 });
+	assert.deepEqual(pngSize("site/public/icon-512.png"), { width: 512, height: 512 });
+	assert.deepEqual(pngSize("site/public/og-image.png"), { width: 1200, height: 630 });
 });
