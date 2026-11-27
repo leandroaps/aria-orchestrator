@@ -131,6 +131,22 @@ plugin's question hook records it, and `record-approval` accepts only events
 written by that hook. `record-approval` and `cancel` refuse a `--root` other
 than the repository of the current directory.
 
+## Hooks
+
+The plugin wires four hooks (`hooks/hooks.json`). They are operational
+controls, not a sandbox: `aria run accept` still compares the real change.
+
+| Hook | Event | Does |
+|---|---|---|
+| `question-hook.mjs` | `PreToolUse`/`PostToolUse` on `AskUserQuestion` | Records the owner's click on the approval question, the only way a plan is approved. Denies a question that arrives with answers already filled in |
+| `prompt-hook.mjs` | `UserPromptSubmit` | A typed "approve <prefix>" approves nothing; it is logged so `record-approval` can say why |
+| `tool-guard.mjs` | `PreToolUse` on writes, Bash and MCP; `Stop` | Keeps the approval registry and `.git` out of reach, keeps subagents out of run state, and during a task limits each agent to its territory; read-only agents only read. `Stop` asks once to accept or fail a running task |
+| `push-gate.mjs` | `PreToolUse` on Bash | Before `git push` of a branch, runs `aria gate` on the pushed worktree: config, changed specs and their graphs, required reviewers |
+
+`aria gate` runs the same checks by hand. The approval question's text
+follows `locale` in `aria.config.json` (`en` or `pt-BR`); `aria run plan`
+gives it as `approval_question`.
+
 ## Development
 
 ```bash

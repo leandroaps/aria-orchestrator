@@ -44,6 +44,14 @@
   the Linux console and the legacy Windows console), and has three
   verbosity levels. `aria status [<run-id>]` summarises a run with its next
   step. `--json` never carries an escape code. Phase P3 is done.
+- Hooks (plan 0001, phase P4), wired in `hooks/hooks.json` and ported from
+  bernardo-pet: the question hook (the only source of an approval; the
+  template's text in `locales/en.json` and `locales/pt-BR.json`), the
+  prompt hook, the tool guard (territory, sensitive set, read-only
+  auditors, the `pr` agent, `Stop`), and the push gate with `aria gate`.
+  The gate runs aria's own checks in-process instead of project scripts.
+  `aria run plan` returns the exact `approval_question`, and
+  `record-approval` now works end to end. Phase P4 is done.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;

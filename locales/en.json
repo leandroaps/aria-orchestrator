@@ -1,0 +1,10 @@
+{
+  "approval": {
+    "header": "Approval",
+    "question": "Approve the plan of run {runId} (spec {spec}), digest {prefix}?",
+    "yes": "Yes, approve {prefix}",
+    "yesDescription": "Records the approval of this plan in the controller.",
+    "no": "No",
+    "noDescription": "The run stays in awaiting_approval."
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "approval": {
+    "header": "Aprovação",
+    "question": "Aprovar o plano do run {runId} (spec {spec}), digest {prefix}?",
+    "yes": "Sim, aprovo {prefix}",
+    "yesDescription": "Registra a aprovação deste plano no controlador.",
+    "no": "Não",
+    "noDescription": "O run continua em awaiting_approval."
+  }
+}
