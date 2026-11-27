@@ -92,6 +92,7 @@ const VALID = {
 		evidence: { generatedInputs: ["src/generated/types.ts"] },
 		run: { externalResources: ["neon", "cloudflare-d1"] },
 		locale: "pt-BR",
+		contracts: { forbidden: [{ pattern: "\\bDockerfile\\b", reason: "this project has no Docker" }] },
 	}),
 };
 
@@ -122,11 +123,16 @@ const INVALID = {
 	"resource in capitals": withKey({ run: { externalResources: ["Neon"] } }),
 	"locale fr": withKey({ locale: "fr" }),
 	"section not an object": withKey({ run: [] }),
+	"forbidden claim without a reason": withKey({ contracts: { forbidden: [{ pattern: "Dockerfile" }] } }),
+	"forbidden claim with an empty pattern": withKey({ contracts: { forbidden: [{ pattern: "", reason: "x" }] } }),
+	"unknown forbidden claim key": withKey({ contracts: { forbidden: [{ pattern: "x", reason: "y", flags: "i" }] } }),
+	"unknown contracts key": withKey({ contracts: { allow: [] } }),
 };
 
 // Rules the schema cannot express; only the loader checks them.
 const LOADER_ONLY = {
 	"impact rule names an undeclared agent": withKey({ impactRules: [{ ...rule, agent: "ghost" }] }),
+	"forbidden claim that is not a regular expression": withKey({ contracts: { forbidden: [{ pattern: "a(", reason: "x" }] } }),
 };
 
 for (const [name, config] of Object.entries(VALID)) {
@@ -149,6 +155,7 @@ test("rules only the loader can check are documented in the schema", () => {
 		assert.equal(loaderAccepts(config), false);
 	}
 	assert.match(schema.description, /impact rule must name an agent declared/);
+	assert.match(schema.description, /forbidden claim pattern must compile/);
 });
 
 test("schema and loader declare the same keys and enums", () => {
@@ -156,7 +163,8 @@ test("schema and loader declare the same keys and enums", () => {
 	assert.deepEqual(keys(schema), [...KNOWN_KEYS.root].sort());
 	assert.deepEqual(keys(schema.$defs.agent), [...KNOWN_KEYS.agent].sort());
 	assert.deepEqual(keys(schema.$defs.impactRule), [...KNOWN_KEYS.impactRule].sort());
-	for (const section of ["specs", "evidence", "run"]) {
+	assert.deepEqual(keys(schema.$defs.forbiddenClaim), ["pattern", "reason"]);
+	for (const section of ["specs", "evidence", "run", "contracts"]) {
 		assert.deepEqual(keys(schema.properties[section]), [...KNOWN_KEYS[section]].sort());
 	}
 	assert.deepEqual(schema.$defs.agent.properties.mode.enum, VALID_MODES);
@@ -170,6 +178,7 @@ test("defaults in the schema are the loader's defaults", () => {
 	assert.equal(config.locale, schema.properties.locale.default);
 	assert.deepEqual(config.impactRules, schema.properties.impactRules.default);
 	assert.deepEqual(config.evidence.generatedInputs, schema.properties.evidence.properties.generatedInputs.default);
+	assert.deepEqual(config.contracts.forbidden, schema.properties.contracts.properties.forbidden.default);
 });
 
 test("the template points editors at the schema in this repository", () => {

@@ -57,7 +57,8 @@ get the skills as guidance only.
 A repository orchestrated by ARIA keeps its project rules in
 `aria.config.json`: the agents and the paths each one may write, the reviews
 that changes to sensitive paths require, where specs live, and which
-external resources a local lock cannot protect. Runtime state goes in
+external resources a local lock cannot protect, and claims its agents and
+skills must not make (`contracts.forbidden`). Runtime state goes in
 `.aria/`, which should be git-ignored.
 
 Start from [`templates/aria.config.json`](templates/aria.config.json). Its
@@ -86,6 +87,8 @@ checks below are read-only.
 | `validate graph <spec>` | Owners, dependencies, cycles, territories, and parallel tasks that write the same paths |
 | `validate handoff <spec> <file> [--base <ref>]` | A worker's handoff: shape, owner, territory, and with `--base`, the real change |
 | `validate run [<run-id>]` | A run's manifest, events and approval provenance |
+| `validate contracts` | Agents, skills, `CLAUDE.md` and `AGENTS.md`: skill anatomy, read-only agents' tools, preloaded skills, paths that do not exist, and the project's `contracts.forbidden` rules |
+| `validate workflows` | The plugin's workflows and the repository's `.claude/workflows/`, against the rules of the workflow runtime |
 | `scope --base <ref> --head <ref>` | Files and specs a change touches, and whether governance files changed |
 | `classify (--base/--head \| --files <json>) [--manual <json>]` | Reviews the change requires or recommends, with the reason for each |
 
@@ -125,11 +128,40 @@ dir, so every worktree sees them.
 | `run resume <run-id>` | Revalidates every task after an interruption |
 | `run recover-lock <key>` | Frees a lock only when its holder provably stopped using it |
 | `run cancel <run-id> --reason <text>` | Ends a superseded run and releases its locks |
+| `run select <run-id> [--pr <n>]` | Names the run `/loop` follows |
+| `run observe [--checks <text>] [--head <sha>]` | One loop tick: `work`, `idle` or `stop`, with the reason |
 
 Only the owner's click on the approval question approves a plan. The
 plugin's question hook records it, and `record-approval` accepts only events
 written by that hook. `record-approval` and `cancel` refuse a `--root` other
 than the repository of the current directory.
+
+## Skills, agents and workflows
+
+The plugin ships the process; the project keeps its stack. Skills hold the
+method, agents hold a role, and workflows sequence agents around the run
+controller.
+
+| Kind | Name | Does |
+|---|---|---|
+| Skill | `orchestrate` | The Lead's protocol for a spec: reality check, impact, graph, the owner's approval, dispatch, handoffs, routing, close-out |
+| Skill | `spec` | Writing and closing a spec: EARS criteria, `tasks.md` with owners and `task-meta` |
+| Skill | `interview` | Confirmed intent before a spec exists, one question at a time |
+| Skill | `reality-check` | What the spec claims against what the repository holds |
+| Skill | `doubt-review` | A fresh-context reviewer told to disprove one decision |
+| Skill | `source-grounding` | Framework decisions grounded in the installed version's docs |
+| Skill | `pr-review` | Five axes, a severity scale and a verdict |
+| Skill | `debugging`, `deprecation` | Root-cause debugging; removing code without breaking its users |
+| Skill | `test`, `security`, `presenter` | The method of each reviewing or testing role |
+| Skill | `follow-run` | One `/loop` tick over the selected run |
+| Agent | `controller` | Runs the one `aria` command a workflow step gives it |
+| Agent | `security`, `test`, `pr`, `presenter` | The core roles; the project's own agents (`backend`, `frontend`…) live in its `.claude/agents/` |
+| Workflow | `aria-plan`, `aria-execute`, `aria-review` | Plan and impact, dispatch and accept, closing gates and the final security review |
+
+Spec templates live in [`templates/spec/`](templates/spec/). In a
+repository with the plugin installed, workflows run as
+`/aria-orchestrator:aria-plan` and the loop as
+`/loop /aria-orchestrator:follow-run`.
 
 ## Hooks
 

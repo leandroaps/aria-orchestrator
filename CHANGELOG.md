@@ -52,6 +52,24 @@
   The gate runs aria's own checks in-process instead of project scripts.
   `aria run plan` returns the exact `approval_question`, and
   `record-approval` now works end to end. Phase P4 is done.
+- Skills, agents and workflows (plan 0001, phase P5), generalised from
+  bernardo-pet:
+  - skills `orchestrate`, `spec`, `interview`, `reality-check`,
+    `doubt-review`, `source-grounding`, `pr-review`, `debugging`,
+    `deprecation`, `presenter`, and stack-neutral `test` and `security`;
+  - `follow-run`, the `/loop` tick that replaces bernardo's `.claude/loop.md`;
+  - agents `controller`, `security`, `test`, `pr` and `presenter`;
+  - workflows `aria-plan`, `aria-execute` and `aria-review`, which keep the
+    manual protocol as a fallback;
+  - spec templates in `templates/spec/`;
+  - `aria validate contracts` (skill anatomy, agents, plugin-ignored
+    fields, dead paths, and the project's `contracts.forbidden` rules, a new
+    config key), `aria validate workflows`, and `aria run select` and
+    `run observe` for `/loop`;
+  - the tool guard recognises the plugin's agents under their plugin-scoped
+    name, and `run select` belongs to the main session.
+
+  Phase P5 is done. `THIRD_PARTY_NOTICES.md` credits the adapted material.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;

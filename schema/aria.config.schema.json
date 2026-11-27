@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/leandroaps/aria-orchestrator/blob/main/schema/aria.config.schema.json",
   "title": "ARIA configuration",
-  "description": "aria.config.json at the root of a repository orchestrated by ARIA. lib/config.mjs is the validator the engine runs; this schema describes the same rules for editors and documentation, and the tests keep the two in step. One rule is checked only by the loader: an impact rule must name an agent declared in \"agents\".",
+  "description": "aria.config.json at the root of a repository orchestrated by ARIA. lib/config.mjs is the validator the engine runs; this schema describes the same rules for editors and documentation, and the tests keep the two in step. Two rules are checked only by the loader: an impact rule must name an agent declared in \"agents\", and a forbidden claim pattern must compile as a JavaScript regular expression.",
   "type": "object",
   "required": ["version", "agents"],
   "additionalProperties": false,
@@ -61,6 +61,18 @@
         }
       }
     },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "forbidden": {
+          "description": "Project rules for aria validate contracts: claims that must not appear in the project's agents, skills, CLAUDE.md or AGENTS.md, such as a tool the project does not have. A line carrying aria-contracts:ignore, or following one that does, is skipped.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/forbiddenClaim" },
+          "default": []
+        }
+      }
+    },
     "locale": {
       "description": "Language of the approval label and the questions ARIA asks.",
       "enum": ["en", "pt-BR"],
@@ -68,6 +80,15 @@
     }
   },
   "$defs": {
+    "forbiddenClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pattern", "reason"],
+      "properties": {
+        "pattern": { "description": "JavaScript regular expression, matched against each line.", "type": "string", "minLength": 1 },
+        "reason": { "description": "Why the claim is wrong in this project; shown with each finding.", "type": "string", "minLength": 1 }
+      }
+    },
     "agent": {
       "type": "object",
       "required": ["mode", "category", "allowedPaths", "defaultVerification"],
