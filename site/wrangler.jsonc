@@ -1,0 +1,18 @@
+{
+  // The project page at aria-orchestrator.dev: static files from dist/,
+  // served by a Worker that only redirects www to the apex.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aria-orchestrator-site",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-27",
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "routes": [
+    { "pattern": "aria-orchestrator.dev", "custom_domain": true },
+    { "pattern": "www.aria-orchestrator.dev", "custom_domain": true }
+  ],
+  "workers_dev": false
+}

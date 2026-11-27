@@ -92,26 +92,43 @@ plainly, and keeps internal complexity out of sight. No artificial
 enthusiasm, no filler. ARIA is the orchestration layer; it never claims to be
 the underlying model or provider.
 
-## Landing page
+## Project page
 
-`site/` is a static page (HTML and CSS, no framework, no external request,
-no tracking) centred on Midnight: the mark, and below it the signature.
+<https://aria-orchestrator.dev> is built from `site/`:
+- React components are rendered to static HTML at build time;
+- one page per language: English at `/`, Brazilian Portuguese at `/pt-br/`,
+  Spanish at `/es/`;
+- a Cloudflare Worker serves the pages.
+
+No React code, font or tracker reaches the browser. The only script is a
+small inline one for the theme switch.
+
+**Layout.** The mark comes first, with the signature below it:
 
 | Line | Colour |
 |---|---|
-| `A R I A` (the name, letter-spaced) | Snow |
+| `A R I A` (the name, letter-spaced) | Text (Snow in dark, Midnight in light) |
 | `AGENTIC SDLC ORCHESTRATOR` | Violet |
-| `Complexity orchestrated.` | Snow |
+| `Complexity orchestrated.` | Text |
 | `Simplicity delivered.` | Violet |
 
-Violet on Midnight has a 3.3:1 contrast, which WCAG AA accepts only for
-large text, so the violet lines stay at 19.2 px with weight 600 or larger.
-Headings stay modest: the name is 28 px. The only motion is a fade on first
-load, skipped under `prefers-reduced-motion`.
+Then come the install commands, the status of each phase (from
+`docs/plan/status.json`) and the latest releases (from the GitHub API at
+build time). The language links and the theme button share the top right
+corner. The footer always sits at the bottom and carries the author's
+mark and credit line. Its heart emoji is the one exception to "no emojis",
+at the author's request.
 
-It is published to GitHub Pages at
-<https://leandroaps.github.io/aria-orchestrator/> by
-`.github/workflows/pages.yml`, on every push to `main` that touches
-`site/`. The Open Graph URLs are absolute and point there; change them in
-`site/index.html` (and the brand test) if the page moves to another domain.
-The page has no build step, so any static host can serve `site/` as-is.
+**Themes.** Dark is Midnight with Snow text. Light is Snow with Midnight
+text. The page follows the system until the visitor picks one, and the
+choice is kept in `localStorage`.
+
+**Contrast.**
+- Violet on Midnight is 3.3:1, which WCAG AA accepts only for large text,
+  so violet text in the dark theme stays at 19.2 px and weight 600 or
+  larger.
+- Links use Lavender in the dark theme (6.96:1) and Violet in the light
+  one (5.4:1).
+
+**Headings and motion.** Headings stay modest: the name is 28 px. The only
+motion is a fade on load, skipped under `prefers-reduced-motion`.

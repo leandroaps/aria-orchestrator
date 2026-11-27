@@ -17,3 +17,20 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm test
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      # Builds the pages (pretest), then tests them. GITHUB_TOKEN lets the
+      # build read the releases, as the deploy does.
+      - run: npm test
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

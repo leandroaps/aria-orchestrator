@@ -30,6 +30,17 @@
   always require `security`, from a list fixed in code. A required reviewer
   missing from `aria.config.json` is reported and fails `classify`. The
   root defaults to the git top level.
+- Project page at https://aria-orchestrator.dev (`site/`, its own package):
+  - React prerendered to static HTML, in English, Brazilian Portuguese and
+    Spanish, with light and dark themes;
+  - install commands, phase status from `docs/plan/status.json`, and the
+    latest GitHub releases;
+  - an author footer;
+  - served by a Cloudflare Worker that also redirects `www`, and deployed
+    by `.github/workflows/site.yml` on pushes to `main` and on published
+    releases.
+
+  GitHub Pages no longer deploys on push.
 - Brand identity (plan 0002, phase B1): approved logo and its vector,
   monogram, favicon, app and Open Graph variants; `brand-tokens.json`
   (colours, status colours and symbols with ASCII fallbacks, fonts, copy);
