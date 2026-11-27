@@ -20,4 +20,5 @@
   monogram, favicon, app and Open Graph variants; `brand-tokens.json`
   (colours, status colours and symbols with ASCII fallbacks, fonts, copy);
   `docs/brand/identity.md`; README header; plugin icon; static landing page
-  in `site/` that shows only the logo.
+  in `site/`, published to GitHub Pages. Below the logo it shows the name,
+  the descriptor and the slogan, in Snow and Violet.

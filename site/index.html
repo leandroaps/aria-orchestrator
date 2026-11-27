@@ -24,7 +24,7 @@
   :root {
     --midnight: #0B1020;
     --snow: #F8FAFC;
-    --muted: #94A3B8;
+    --violet: #7C3AED;
     --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -33,7 +33,6 @@
     background: var(--midnight);
     color: var(--snow);
     font-family: var(--sans);
-    overflow: hidden;
   }
   main {
     min-height: 100vh;
@@ -51,25 +50,41 @@
     aspect-ratio: 480 / 432;
     height: auto;
   }
-  .signature { display: none; text-align: center; }
-  body[data-signature="on"] .signature { display: block; }
-  .signature h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: 0.08em; }
-  .signature p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
-  .signature .descriptor { margin-bottom: 1rem; }
+  .signature { text-align: center; }
+  .signature h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5em;
+    margin-right: -0.5em; /* keep the spaced letters centred */
+    color: var(--snow);
+  }
+  /* Violet on Midnight is 3.3:1, enough only for large text (WCAG AA,
+     at least 18.66px bold): the violet lines stay at 19.2px, weight 600. */
+  .signature .descriptor {
+    margin: 0.75rem 0 2rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--violet);
+  }
+  .signature .slogan { margin: 0; font-size: 1.2rem; font-weight: 600; line-height: 1.4; color: var(--snow); }
+  .signature .slogan + .slogan { margin-top: 1.25rem; color: var(--violet); }
   @media (prefers-reduced-motion: no-preference) {
     main { animation: fade-in 600ms ease-out both; }
     @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
   }
 </style>
 </head>
-<!-- Set data-signature="on" to show the brand signature under the logo. -->
-<body data-signature="off">
+<body>
 <main>
   <img class="logo" src="aria-mark.svg" width="480" height="432" alt="ARIA — Agentic SDLC Orchestrator">
   <div class="signature">
     <h1>ARIA</h1>
     <p class="descriptor">Agentic SDLC Orchestrator</p>
-    <p>Complexity orchestrated.<br>Simplicity delivered.</p>
+    <p class="slogan">Complexity orchestrated.</p>
+    <p class="slogan">Simplicity delivered.</p>
   </div>
 </main>
 </body>
