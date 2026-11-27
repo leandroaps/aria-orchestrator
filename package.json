@@ -5,6 +5,9 @@
   "description": "Spec-driven SDLC orchestration for Claude Code, with approval, territory and evidence rules enforced by code.",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "aria": "bin/aria.mjs"
+  },
   "engines": {
     "node": ">=24"
   },

@@ -16,6 +16,13 @@
   snapshot verification), extracted from bernardo-pet. Project values come
   from `aria.config.json`; runtime state lives in `.aria/`. Covered by
   `node:test` suites against temporary git repositories.
+- Config (plan 0001, phase P2): JSON Schema in
+  `schema/aria.config.schema.json`; the loader reports every problem at
+  once, each with its location (`agents.api.mode`), and rejects unknown keys
+  with a "did you mean" hint; starter config in `templates/aria.config.json`;
+  `aria validate config` (`--root`, `--json`; exit 0/1/2). Tests keep the
+  schema and the loader in step on the same corpus of valid and invalid
+  configs.
 - Brand identity (plan 0002, phase B1): approved logo and its vector,
   monogram, favicon, app and Open Graph variants; `brand-tokens.json`
   (colours, status colours and symbols with ASCII fallbacks, fonts, copy);

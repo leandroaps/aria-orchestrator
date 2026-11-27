@@ -52,6 +52,26 @@ usable yet.
 Enforcement relies on Claude Code hooks. Other agents that read `AGENTS.md`
 get the skills as guidance only.
 
+## Configuration
+
+A repository orchestrated by ARIA keeps its project rules in
+`aria.config.json`: the agents and the paths each one may write, the reviews
+that changes to sensitive paths require, where specs live, and which
+external resources a local lock cannot protect. Runtime state goes in
+`.aria/`, which should be git-ignored.
+
+Start from [`templates/aria.config.json`](templates/aria.config.json). Its
+`$schema` line gives editors completion and inline errors from
+[`schema/aria.config.schema.json`](schema/aria.config.schema.json). Check it
+with:
+
+```bash
+node bin/aria.mjs validate config          # every problem, with its location
+node bin/aria.mjs validate config --json   # for scripts and CI
+```
+
+Exit codes: 0 valid, 1 invalid, 2 usage error.
+
 ## Development
 
 ```bash
