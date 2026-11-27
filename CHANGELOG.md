@@ -30,6 +30,13 @@
   always require `security`, from a list fixed in code. A required reviewer
   missing from `aria.config.json` is reported and fails `classify`. The
   root defaults to the git top level.
+- CLI, run commands (plan 0001, phase P3.2a): `aria run create`, `plan`,
+  `status`, `record-approval`, `start`, `verify`, `accept`, `ready`,
+  `fail`, `resume`, `recover-lock` and `cancel`, ported from bernardo-pet
+  `agent-run.mjs` into `lib/run-controller.mjs`. Plain or `--json` output;
+  exit 1 on a refusal. Run ids, task ids, lock keys and defect categories
+  are checked before use. An approval counts only when the plugin's own
+  question hook wrote the event.
 - Project page at https://aria-orchestrator.dev (`site/`, its own package):
   - React prerendered to static HTML, in English, Brazilian Portuguese and
     Spanish, with light and dark themes;
