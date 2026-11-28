@@ -24,9 +24,16 @@ if (typeof agent !== "function" || typeof phase !== "function") {
 	};
 }
 
-// What this turn has spent, in output tokens, when the runtime reports it
-// (`budget` is shared by the main loop and every workflow of the turn).
-const spent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+// Output tokens, when the runtime reports them. `budget.spent()` is the whole
+// turn's (the main loop and every workflow share it), so the workflow's own
+// spend is the difference since it started.
+const turnSpent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+const startSpent = turnSpent();
+const spent = () => {
+	const now = turnSpent();
+	return now === null || startSpent === null ? null : now - startSpent;
+};
+const tokenReport = () => ({ tokens: spent(), turn_tokens: turnSpent() });
 
 const CONTROLLER = "aria-orchestrator:controller";
 const SECURITY = "aria-orchestrator:security";
@@ -134,7 +141,7 @@ if (reality === null || reality === undefined) {
 	return { ok: false, spec, blocked: "the reality check returned no result", reality: null };
 }
 if (reality.status === "blocked") {
-	return { ok: false, spec, blocked: "blocking divergence: fix the documentation or get the owner's decision", reality, tokens: spent() };
+	return { ok: false, spec, blocked: "blocking divergence: fix the documentation or get the owner's decision", reality, ...tokenReport() };
 }
 
 phase("Graph");
@@ -154,7 +161,7 @@ if (
 	!RUN_ID.test(String(plan.run_id ?? "")) ||
 	!PREFIX.test(String(plan.approval_prefix ?? ""))
 ) {
-	return { ok: false, spec, blocked: "the graph is invalid or no plan was produced", reality, plan: plan ?? null, tokens: spent() };
+	return { ok: false, spec, blocked: "the graph is invalid or no plan was produced", reality, plan: plan ?? null, ...tokenReport() };
 }
 
 // High impact is the union of the reality check's judgment and
@@ -222,7 +229,7 @@ return {
 	impact_problems: [...new Set(impactProblems)],
 	security: security ?? null,
 	security_missing: securityMissing,
-	tokens: spent(),
+	...tokenReport(),
 	// This workflow ends here. Only the owner's click on the approval question
 	// approves, and the question hook records it.
 	next: securityMissing

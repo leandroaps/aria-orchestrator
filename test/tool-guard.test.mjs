@@ -256,6 +256,17 @@ test("Stop asks for one continuation while a task runs, and never loops", (t) =>
 	assert.equal(decideStop({ stop_hook_active: false, agent_id: "a1" }, { root }), null);
 });
 
+// P7 round 3: while aria-execute ran in the background, the Lead read this
+// reason as "accept or fail now" and polled the run with a monitor and a
+// sleep loop, spending tokens on every wake-up.
+test("Stop tells the Lead to end the turn when a workflow holds the running task", (t) => {
+	const root = workspace(t);
+	startTask(root);
+	const once = decideStop({ stop_hook_active: false }, { root });
+	assert.match(once.reason, /If the aria-execute workflow is running it, end the turn/);
+	assert.match(once.reason, /do not poll/);
+});
+
 test("as a hook: a denial is JSON on stdout, exit 0; Stop and other tools pass through", (t) => {
 	const root = workspace(t);
 	startTask(root);

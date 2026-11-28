@@ -20,9 +20,16 @@ if (typeof agent !== "function" || typeof phase !== "function") {
 	};
 }
 
-// What this turn has spent, in output tokens, when the runtime reports it
-// (`budget` is shared by the main loop and every workflow of the turn).
-const spent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+// Output tokens, when the runtime reports them. `budget.spent()` is the whole
+// turn's (the main loop and every workflow share it), so the workflow's own
+// spend is the difference since it started.
+const turnSpent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+const startSpent = turnSpent();
+const spent = () => {
+	const now = turnSpent();
+	return now === null || startSpent === null ? null : now - startSpent;
+};
+const tokenReport = () => ({ tokens: spent(), turn_tokens: turnSpent() });
 
 const CONTROLLER = "aria-orchestrator:controller";
 const SECURITY = "aria-orchestrator:security";
@@ -55,6 +62,18 @@ const SPEC_SCHEMA = {
 	type: "object",
 	properties: { spec: { type: "string" }, error: { type: "string" } },
 	required: ["spec"],
+};
+
+const CLOSE_SCHEMA = {
+	type: "object",
+	properties: {
+		ok: { type: "boolean" },
+		state: { type: "string" },
+		reason: { type: "string" },
+		uncommitted: { type: "array", items: { type: "string" } },
+		error: { type: "string" },
+	},
+	required: ["ok"],
 };
 
 const SCOPE_SCHEMA = {
@@ -97,10 +116,10 @@ Return the "spec" field (or the command's error in "error").`,
 	{ label: `spec:${runId}`, phase: "Gates", agentType: CONTROLLER, schema: SPEC_SCHEMA },
 );
 if (specInfo === null || specInfo === undefined || !specInfo.spec) {
-	return { ok: false, run: runId, blocked: "could not resolve the run's spec", specInfo: specInfo ?? null, tokens: spent() };
+	return { ok: false, run: runId, blocked: "could not resolve the run's spec", specInfo: specInfo ?? null, ...tokenReport() };
 }
 const spec = String(specInfo.spec);
-if (!SPEC.test(spec)) return { ok: false, run: runId, diagnosis: `invalid spec "${spec}" from the status step`, tokens: spent() };
+if (!SPEC.test(spec)) return { ok: false, run: runId, diagnosis: `invalid spec "${spec}" from the status step`, ...tokenReport() };
 
 // Sequential on purpose: a project's build and test commands often write the
 // same artifacts and must not race each other.
@@ -149,7 +168,7 @@ if (uncommitted.length > 0) {
 		spec,
 		gates,
 		uncommitted,
-		tokens: spent(),
+		...tokenReport(),
 		next: "commit the accepted change first, then run aria-review again: the security review reads the committed diff",
 	};
 }
@@ -165,20 +184,34 @@ const security = await agent(
 
 const gatesPassed = gates.every((gate) => gate.exit_code === 0);
 const securityOk = security !== null && security !== undefined && !security.blocks_closing;
+// The run leaves `running` only through the controller, which checks again
+// that every task is accepted and the change committed.
+let closed = null;
+if (gatesPassed && securityOk) {
+	closed = await agent(
+		`Run exactly this command from the repository root and return its JSON output fields; do not edit any file and do not run anything else:
+aria run close ${runId} --json`,
+		{ label: `close:${runId}`, phase: "Security", agentType: CONTROLLER, schema: CLOSE_SCHEMA },
+	);
+}
+const closedOk = closed?.ok === true;
 return {
-	ok: gatesPassed && securityOk,
+	ok: gatesPassed && securityOk && closedOk,
+	closed,
 	run: runId,
 	spec,
 	gates,
 	scope: scopeValid ? scope : null,
 	scope_missing: !scopeValid,
 	security: security ?? null,
-	tokens: spent(),
+	...tokenReport(),
 	// The Lead records the results and decides; merge and deploy are never
 	// implied by this result.
 	next: !gatesPassed
 		? "gate failure: route it to the owning task; do not mark the pull request ready"
 		: !securityOk
 			? "security review missing or a Critical/High finding open: the owner decides"
-			: "closing condition met: the Lead updates the spec status and marks the draft pull request ready",
+			: !closedOk
+				? `the run could not be closed: ${closed?.reason ?? closed?.error ?? "no result"}`
+				: "closing condition met, run ready for review: the Lead updates the spec status and marks the draft pull request ready",
 };

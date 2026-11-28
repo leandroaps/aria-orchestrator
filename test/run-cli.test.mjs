@@ -342,6 +342,45 @@ test("run recover-lock: frees the worktree lock of a run that ended without rele
 	assert.equal(recovered.json().previous.run_id, runId);
 });
 
+// P7 round 3 (B4): after the final review passed, the run stayed `running`,
+// and no command moved it on.
+test("run close: once every task is accepted and committed, the run is ready for review", async (t) => {
+	const root = workspace(t);
+	const runId = await approvedRun(root);
+
+	const early = run(root, ["close", runId]);
+	assert.equal(early.code, 1);
+	assert.match(early.json().reason, /not accepted: T1, T2, T3/);
+
+	run(root, ["start", runId, "T1"]);
+	writeFile(root, "src/lib/new.txt", "new\n");
+	assert.equal(run(root, ["accept", runId, "T1", handoff(root, "t1.json", HANDOFF_T1)]).code, 0);
+	run(root, ["start", runId, "T2"]);
+	writeFile(root, "src/lib/more.txt", "more\n");
+	const t2 = { ...HANDOFF_T1, task: "T2", changed_files: ["src/lib/more.txt"], requirements: { "R1.2": "ok" }, evidence: { "R1.2": "node tools/check.mjs" } };
+	assert.equal(run(root, ["accept", runId, "T2", handoff(root, "t2.json", t2)]).code, 0);
+	run(root, ["start", runId, "T3"]);
+	const t3 = { ...HANDOFF_T1, task: "T3", changed_files: [], requirements: { "R1.3": "ok" }, evidence: { "R1.3": "node tools/check.mjs" } };
+	assert.equal(run(root, ["accept", runId, "T3", handoff(root, "t3.json", t3)]).code, 0);
+
+	// The accepted change is still in the working tree: not ready yet.
+	const uncommitted = run(root, ["close", runId]);
+	assert.equal(uncommitted.code, 1);
+	assert.deepEqual(uncommitted.json().uncommitted, ["src/lib/more.txt", "src/lib/new.txt"]);
+	assert.equal(run(root, ["status", runId]).json().state, "running");
+
+	git(root, ["add", "-A"]);
+	git(root, ["commit", "-q", "-m", "accepted change"]);
+	const closed = run(root, ["close", runId]);
+	assert.equal(closed.code, 0, closed.stdout);
+	assert.equal(closed.json().state, "ready_for_review");
+	assert.equal(run(root, ["status", runId]).json().state, "ready_for_review");
+
+	const again = run(root, ["close", runId]);
+	assert.equal(again.code, 1);
+	assert.match(again.json().reason, /already ready_for_review/);
+});
+
 test("aria --help lists the run commands", () => {
 	const result = aria(["--help"], { cwd: process.cwd() });
 	assert.equal(result.code, 0);
@@ -358,6 +397,7 @@ test("aria --help lists the run commands", () => {
 		"resume",
 		"recover-lock",
 		"cancel",
+		"close",
 	]) {
 		assert.match(result.stdout, new RegExp(`run ${command}\\b`), command);
 	}

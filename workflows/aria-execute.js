@@ -3,7 +3,7 @@ export const meta = {
 	description:
 		"Dispatch an approved run's ready tasks to their owners and accept each one only on observed evidence.",
 	whenToUse:
-		"Called by the orchestrate skill after the owner clicked the approval question and the Lead ran aria run record-approval. Args { run: '<run-id>', tokenLimit?: <output tokens> }: with a limit, no new round is dispatched once the turn has spent it.",
+		"Called by the orchestrate skill after the owner clicked the approval question and the Lead ran aria run record-approval. Args { run: '<run-id>', tokenLimit?: <output tokens> }: with a limit, no new round is dispatched once this workflow has spent it.",
 	phases: [
 		{ title: "Gate", detail: "run status and approval before any writer" },
 		{ title: "Dispatch", detail: "start, owner, accept, per ready task" },
@@ -22,9 +22,16 @@ if (typeof agent !== "function" || typeof pipeline !== "function") {
 	};
 }
 
-// What this turn has spent, in output tokens, when the runtime reports it
-// (`budget` is shared by the main loop and every workflow of the turn).
-const spent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+// Output tokens, when the runtime reports them. `budget.spent()` is the whole
+// turn's (the main loop and every workflow share it), so the workflow's own
+// spend is the difference since it started.
+const turnSpent = () => (typeof budget === "object" && budget !== null && typeof budget.spent === "function" ? budget.spent() : null);
+const startSpent = turnSpent();
+const spent = () => {
+	const now = turnSpent();
+	return now === null || startSpent === null ? null : now - startSpent;
+};
+const tokenReport = () => ({ tokens: spent(), turn_tokens: turnSpent() });
 
 const CONTROLLER = "aria-orchestrator:controller";
 const RUN_ID = /^\d{8}T\d{6}Z-[0-9a-f]{6}$/;
@@ -121,7 +128,18 @@ const HANDOFF_SCHEMA = {
 		requirements: { type: "object" },
 		evidence: { type: "object" },
 		changed_files: { type: "array", items: { type: "string" } },
-		verification: { type: "array" },
+		verification: {
+			type: "array",
+			items: {
+				type: "object",
+				properties: {
+					command: { type: "string" },
+					status: { type: "string", enum: ["passed", "failed", "not_run"] },
+					first_failure: { type: "string" },
+				},
+				required: ["command", "status"],
+			},
+		},
 		findings: { type: "array" },
 		blocked_by: { type: "array" },
 		next: { type: "array" },
@@ -148,12 +166,12 @@ Return state, approval_valid (the approval.valid field), approval_reasons (appro
 
 let status = await readStatus();
 if (status === null || status === undefined) {
-	return { ok: false, run: runId, blocked: "status unavailable; nothing dispatched", tokens: spent() };
+	return { ok: false, run: runId, blocked: "status unavailable; nothing dispatched", ...tokenReport() };
 }
 const statusProblem = invalidStatusField(status);
-if (statusProblem) return { ok: false, run: runId, diagnosis: statusProblem, tokens: spent() };
+if (statusProblem) return { ok: false, run: runId, diagnosis: statusProblem, ...tokenReport() };
 if (!status.approval_valid || !["approved", "running"].includes(status.state)) {
-	return { ok: false, run: runId, blocked: "the run is not approved for the current plan", status, tokens: spent() };
+	return { ok: false, run: runId, blocked: "the run is not approved for the current plan", status, ...tokenReport() };
 }
 
 phase("Dispatch");
@@ -209,15 +227,36 @@ while (rounds < MAX_ROUNDS) {
 				}));
 			}
 			const file = `.aria/handoffs/${runId}-${taskId}.json`;
+			// The Write tool, never the shell: a heredoc goes through the user's
+			// shell, where `cat` can be an alias (P7 round 3 wrote an empty file).
 			return agent(
-				`Write this exact JSON to ${file} (create .aria/handoffs if needed), then run from the repository root:
+				`Write this exact JSON to ${file} with the Write tool, never through the shell (no cat, echo or heredoc), then run from the repository root:
 aria run accept ${runId} ${taskId} ${file} --json
-Return the command's JSON fields. Do not edit anything else.
+Return the command's JSON fields; on a command error put its text in "error". Do not edit anything else.
 ${DATA_NOTICE}
 JSON:
 ${JSON.stringify(handoff)}`,
 				{ label: `accept:${taskId}`, phase: "Dispatch", agentType: CONTROLLER, schema: CONTROL_SCHEMA },
-			).then((accepted) => ({ taskId, started, handoff, accepted }));
+			).then((accepted) => {
+				// A refusal (findings) is already a failure on record. A command
+				// that errored before deciding (an unreadable handoff) left the
+				// task running: record the failure, so it can be dispatched again.
+				const decided = accepted && (accepted.ok === true || (Array.isArray(accepted.findings) && accepted.findings.length > 0));
+				if (decided) return { taskId, started, handoff, accepted };
+				return control(
+					`aria run fail ${runId} ${taskId} --category other --repro accept-command-error --json`,
+					`fail:${taskId}`,
+				).then((failed) => ({
+					taskId,
+					started,
+					handoff,
+					accepted: {
+						ok: false,
+						findings: [`aria run accept errored: ${accepted?.error ?? "no result"}`],
+						routing: failed?.routing,
+					},
+				}));
+			});
 		},
 	);
 
@@ -241,10 +280,10 @@ ${JSON.stringify(handoff)}`,
 
 	status = await readStatus();
 	if (status === null || status === undefined) {
-		return { ok: false, run: runId, blocked: "status unavailable mid-run", outcomes, tokens: spent() };
+		return { ok: false, run: runId, blocked: "status unavailable mid-run", outcomes, ...tokenReport() };
 	}
 	const roundProblem = invalidStatusField(status);
-	if (roundProblem) return { ok: false, run: runId, diagnosis: roundProblem, outcomes, tokens: spent() };
+	if (roundProblem) return { ok: false, run: runId, diagnosis: roundProblem, outcomes, ...tokenReport() };
 	if (!["approved", "running"].includes(status.state)) break;
 }
 
@@ -257,7 +296,7 @@ return {
 	pending,
 	lead_ready: leadReady,
 	outcomes,
-	tokens: spent(),
+	...tokenReport(),
 	stopped_by_token_limit: stoppedByTokenLimit,
 	next:
 		pending.length === 0

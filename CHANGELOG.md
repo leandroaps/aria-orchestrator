@@ -99,6 +99,19 @@
     stops before the security review while the accepted change is
     uncommitted;
   - the tool guard allows `mkdir` of the directory a territory lives in.
+- Fixes from the third P7 run:
+  - `aria run close` moves a run whose tasks are all accepted and whose
+    change is committed to `ready_for_review`; `aria-review` runs it once
+    the gates pass and nothing blocks closing;
+  - `aria-execute` has the controller write each handoff with the Write
+    tool, records a failure when `aria run accept` errors before deciding,
+    and fixes the shape of the worker's `verification` entries;
+  - every workflow returns `tokens` (its own spend) and `turn_tokens`, and
+    `tokenLimit` counts the workflow's own spend;
+  - the stop hook and the `orchestrate` skill tell the Lead to end the turn
+    while a workflow holds a running task, instead of polling it;
+  - the skill forbids editing a worker's handoff, and the `security` agent
+    stays inside the repository under review.
 - Model and token control: `lib/model-policy.mjs` fixes the model and
   effort of every agent and skill the plugin ships (`presenter` moves to
   Haiku, `orchestrate` to medium effort, `reality-check` to low).

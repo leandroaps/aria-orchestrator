@@ -17,6 +17,7 @@ import {
 	TASK_ID_PATTERN,
 	acceptCommand,
 	cancelCommand,
+	closeCommand,
 	createCommand,
 	failCommand,
 	planCommand,
@@ -91,6 +92,7 @@ Run commands (one orchestration run of a spec):
   run resume <run-id>                   Revalidate a run after an interruption
   run recover-lock <key>                Free a lock whose holder is gone
   run cancel <run-id> --reason <text>   End a superseded run
+  run close <run-id>                    Every task accepted and committed: ready for review
   run select <run-id> [--pr <n>]        Name the run /loop follows
   run observe [--checks <text>]         One loop tick: work, idle or stop
            [--head <sha>]               ...for this head (default: HEAD)
@@ -529,6 +531,21 @@ function runCancel(ctx, [runId]) {
 	);
 }
 
+// After the final review: every task accepted, the change committed.
+function runClose(ctx, [runId]) {
+	return runCommand(
+		ctx,
+		() => closeCommand(ctx.root, { runId }),
+		(result) =>
+			result.ok
+				? [`Run ${runId} is ready for review.`]
+				: [
+						`Run ${runId} not closed: ${result.reason}.`,
+						...(result.uncommitted ?? []).map((path) => `  uncommitted: ${path}`),
+					],
+	);
+}
+
 // --- Gate --------------------------------------------------------------------------
 
 // The push gate's checks, by hand, on the worktree of the current directory.
@@ -593,6 +610,7 @@ const COMMANDS = {
 	},
 	"run resume": { run: runResume, args: ["run-id"] },
 	"run recover-lock": { run: runRecoverLock, args: ["key"] },
+	"run close": { run: runClose, args: ["run-id"] },
 	"run cancel": { run: runCancel, args: ["run-id"], options: ["reason"], requires: ["reason"] },
 	"run select": { run: runSelect, args: ["run-id"], options: ["pr"] },
 	"run observe": { run: runObserve, args: [], options: ["head", "checks"] },
