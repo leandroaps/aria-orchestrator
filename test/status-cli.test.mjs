@@ -1,6 +1,9 @@
 // `aria status [<run-id>]`: the run summary, rendered by the terminal layer.
 
 import assert from "node:assert/strict";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { HANDOFF_T1, aria, approvedRun, create, handoff, run } from "./helpers/run-cli.mjs";
 import { SPEC, workspace, writeFile } from "./helpers/workspace.mjs";
@@ -185,4 +188,30 @@ test("status takes no run command options", (t) => {
 	const root = workspace(t);
 	assert.equal(status(root, ["--reason", "x"]).code, 2);
 	assert.equal(status(root, ["not-a-run"]).code, 2);
+});
+
+// Plan 0001 P7, round 2: aria-execute dispatched the owner `test` as agent
+// type `test`, which does not exist; the plugin's agent is
+// `aria-orchestrator:test`. The status gives each task the agent type that
+// does exist: the project's own agent first, then the plugin's.
+test("each task carries the agent type that runs it", (t) => {
+	const root = workspace(t);
+	const plugin = realpathSync(mkdtempSync(join(tmpdir(), "aria-plugin-agents-")));
+	t.after(() => rmSync(plugin, { recursive: true, force: true }));
+	writeFile(plugin, "hooks/question-hook.mjs", "// test hook\n");
+	writeFile(plugin, "agents/backend.md", "---\nname: backend\n---\n");
+	writeFile(plugin, "agents/security.md", "---\nname: security\n---\n");
+	writeFile(root, ".claude/agents/backend.md", "---\nname: backend\n---\n");
+	const runId = create(root);
+	const summary = aria(["status", runId, "--json"], { cwd: root, pluginRoot: plugin }).json();
+	assert.deepEqual(summary.tasks.map((task) => [task.id, task.owner, task.agent_type]), [
+		["T1", "backend", "backend"],
+		["T2", "backend", "backend"],
+		["T3", "backend", "backend"],
+	]);
+	rmSync(join(root, ".claude", "agents", "backend.md"));
+	const fromPlugin = aria(["status", runId, "--json"], { cwd: root, pluginRoot: plugin }).json();
+	assert.equal(fromPlugin.tasks[0].agent_type, "aria-orchestrator:backend");
+	const neither = aria(["status", runId, "--json"], { cwd: root }).json();
+	assert.equal(neither.tasks[0].agent_type, "backend");
 });

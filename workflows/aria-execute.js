@@ -58,6 +58,13 @@ function invalidStatusField(status) {
 		if (owner !== "lead" && (!OWNER.test(owner) || NOT_OWNERS.has(owner.toLowerCase()))) {
 			return `invalid owner "${owner}" for ${task.id}`;
 		}
+		// The agent type comes from `aria status`: the project's own agent
+		// (the bare owner) or the plugin's (`aria-orchestrator:<owner>`).
+		// Anything else would run a different agent under the owner's name.
+		const agentType = String(task.agent_type ?? owner);
+		if (owner !== "lead" && agentType !== owner && agentType !== `aria-orchestrator:${owner}`) {
+			return `invalid agent type "${agentType}" for ${task.id} (owner "${owner}")`;
+		}
 	}
 	return null;
 }
@@ -79,6 +86,7 @@ const STATUS_SCHEMA = {
 				properties: {
 					id: { type: "string" },
 					owner: { type: "string" },
+					agent_type: { type: "string" },
 					state: { type: "string" },
 					reasons: { type: "array", items: { type: "string" } },
 				},
@@ -134,7 +142,7 @@ const readStatus = () =>
 	agent(
 		`Run from the repository root, without editing anything:
 aria status ${runId} --json
-Return state, approval_valid (the approval.valid field), approval_reasons (approval.reasons), dispatchable, and tasks (id, owner, state, reasons). On a command error put its text in "error".`,
+Return state, approval_valid (the approval.valid field), approval_reasons (approval.reasons), dispatchable, and tasks (id, owner, agent_type, state, reasons). On a command error put its text in "error".`,
 		{ label: `status:${runId}`, phase: "Gate", agentType: CONTROLLER, schema: STATUS_SCHEMA },
 	);
 
@@ -163,6 +171,7 @@ while (rounds < MAX_ROUNDS) {
 	}
 	rounds += 1;
 	const owners = new Map((status.tasks ?? []).map((task) => [task.id, task.owner]));
+	const agentTypes = new Map((status.tasks ?? []).map((task) => [task.id, String(task.agent_type ?? task.owner)]));
 	// `lead` is the main session, not an agent type: its tasks go back to it.
 	leadReady = (status.dispatchable ?? []).filter((taskId) => owners.get(taskId) === "lead");
 	const batch = (status.dispatchable ?? []).filter((taskId) => owners.get(taskId) !== "lead").slice(0, BATCH);
@@ -174,10 +183,16 @@ while (rounds < MAX_ROUNDS) {
 		({ taskId, started }) => {
 			if (!started || !started.ok) return { taskId, started, handoff: null, skipped: true };
 			const owner = owners.get(taskId);
+			// An agent that cannot start (an unknown agent type, a terminal API
+			// error) throws; it becomes a null handoff, so the next stage records
+			// the failure instead of leaving the task running.
 			return agent(
-				`You are the ${owner} agent executing task ${taskId} of run ${runId}. Read the task in the spec's tasks.md: its task-meta allowed_paths are your ONLY writable territory. Implement it and run the task's verification. Do not commit. Earlier failures of this task, if any, are in "aria run ready ${runId} --json". Return the handoff JSON: list in changed_files exactly every file you created, edited, renamed or deleted, and for each requirement marked "ok" give the evidence in "evidence".`,
-				{ label: `work:${taskId}`, phase: "Dispatch", agentType: owner, schema: HANDOFF_SCHEMA },
-			).then((handoff) => ({ taskId, started, handoff }));
+				`You are the ${owner} agent executing task ${taskId} of run ${runId}. Read the task in the spec's tasks.md: its task-meta allowed_paths are your ONLY writable territory. Implement it and run the task's verification. Do not commit. Earlier failures of this task, if any, are in "aria run ready ${runId} --json". Return the handoff JSON with "agent": "${owner}" and "task": "${taskId}": list in changed_files exactly every file you created, edited, renamed or deleted, and for each requirement marked "ok" give the evidence in "evidence".`,
+				{ label: `work:${taskId}`, phase: "Dispatch", agentType: agentTypes.get(taskId), schema: HANDOFF_SCHEMA },
+			).then(
+				(handoff) => ({ taskId, started, handoff }),
+				() => ({ taskId, started, handoff: null }),
+			);
 		},
 		({ taskId, started, handoff, skipped }) => {
 			if (skipped) return { taskId, started, handoff: null, accepted: null };

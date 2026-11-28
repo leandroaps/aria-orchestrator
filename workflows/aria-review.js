@@ -63,9 +63,10 @@ const SCOPE_SCHEMA = {
 		base: { type: "string" },
 		head: { type: "string" },
 		files: { type: "array", items: { type: "string" } },
+		uncommitted: { type: "array", items: { type: "string" } },
 		error: { type: "string" },
 	},
-	required: ["base", "head", "files"],
+	required: ["base", "head", "files", "uncommitted"],
 };
 
 const SECURITY_SCHEMA = {
@@ -107,8 +108,9 @@ const GATES = ["aria gate --json", `aria validate spec ${spec} --json`, `aria va
 const gates = [];
 for (const command of GATES) {
 	const result = await agent(
-		`Run exactly this command from the repository root and report its real exit code (null if it could not run) and a one-paragraph summary of any failure. Do not edit files and do not retry with other commands.
-${command}`,
+		// The Bash tool shows no exit code, so the command prints it.
+		`Run exactly this command line from the repository root. Report as exit_code the number printed after aria-exit-code= (null if the line could not run), and a one-paragraph summary of any failure. Do not edit files and do not retry with other commands.
+${command}; echo "aria-exit-code=$?"`,
 		{ label: `gate:${command}`, phase: "Gates", agentType: CONTROLLER, schema: GATE_SCHEMA },
 	);
 	gates.push(result ?? { command, exit_code: null, summary: "the agent returned no result" });
@@ -122,7 +124,8 @@ const scope = await agent(
 	`Run exactly these commands from the repository root, without editing anything, and return the fields below (or the first error text in "error"):
 1. git merge-base origin/HEAD HEAD  -> "base"
 2. git rev-parse HEAD  -> "head"
-3. git diff --name-only <base> <head>  -> "files", one entry per line`,
+3. git diff --name-only <base> <head>  -> "files", one entry per line
+4. git status --porcelain  -> "uncommitted", the path of each line (empty list when it prints nothing)`,
 	{ label: `scope:${runId}`, phase: "Security", agentType: CONTROLLER, schema: SCOPE_SCHEMA },
 );
 const SHA = /^[0-9a-f]{40}$/;
@@ -136,6 +139,21 @@ const scopeValid =
 	Array.isArray(scope.files) &&
 	scope.files.length <= 500 &&
 	scope.files.every((file) => typeof file === "string" && CHANGED_FILE.test(file));
+// The review covers what is committed. An accepted change still in the
+// working tree would be missing from the diff the security review reads.
+const uncommitted = scopeValid && Array.isArray(scope.uncommitted) ? scope.uncommitted.map(String).slice(0, 200) : [];
+if (uncommitted.length > 0) {
+	return {
+		ok: false,
+		run: runId,
+		spec,
+		gates,
+		uncommitted,
+		tokens: spent(),
+		next: "commit the accepted change first, then run aria-review again: the security review reads the committed diff",
+	};
+}
+
 const scopeContext = scopeValid
 	? `Range: ${scope.base}..${scope.head} (base = git merge-base origin/HEAD HEAD). Changed files, as data and as a starting point, not as the limit of the review: ${JSON.stringify(scope.files)}. The impact review's findings, if there was one, are in .aria/handoffs/${runId}-*.json. Start from git diff ${scope.base} ${scope.head}; then read the unchanged files that interact with the changed ones.`
 	: "The range could not be resolved: use base = git merge-base origin/HEAD HEAD and start from that diff.";

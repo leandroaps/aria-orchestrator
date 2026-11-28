@@ -196,7 +196,9 @@ failure, on:
 
 ### 11. Spec verify
 
-Before ready for review:
+Commit the accepted change first, on the spec's branch: the gates and the
+final security review read the committed diff. Then, before ready for
+review:
 
 ```bash
 aria gate
@@ -224,7 +226,7 @@ the opt-in the tool requires.
 | 1–3 | `Workflow({ name: "aria-orchestrator:aria-plan", args: { spec } })`: reality check, impact, graph, `security` pre-review on high impact, run created and plan presented. It never implements. |
 | 4 | Present the plan and ask `approval_question`; **stop**. After the click, `aria run record-approval <run-id>`. |
 | 5–10 | Open the draft PR (step 5), then `Workflow({ name: "aria-orchestrator:aria-execute", args: { run, tokenLimit } })`. Tasks owned by `lead` come back to this session: run them with `aria run start` and `accept` yourself. |
-| 11 | `Workflow({ name: "aria-orchestrator:aria-review", args: { run, checks } })` with the project's closing commands, then step 12 here. |
+| 11 | Commit the accepted change first: the review reads the committed diff, and `aria-review` stops when the tree has uncommitted changes. Then `Workflow({ name: "aria-orchestrator:aria-review", args: { run, checks } })` with the project's closing commands, then step 12 here. |
 
 Fall back to the manual protocol only on an **observed** missing
 capability: the Workflow tool is not offered, or a workflow returns

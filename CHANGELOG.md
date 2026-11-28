@@ -89,6 +89,16 @@
     `node`;
   - English is the stated default everywhere; `locale: pt-BR` only on
     request.
+- Fixes from the second P7 run, with the workflows live:
+  - `aria status` gives each task its `agent_type` (the project's agent,
+    then the plugin's `aria-orchestrator:<owner>`), and `aria-execute`
+    dispatches by it;
+  - an owner agent that cannot start is recorded as a failure instead of
+    leaving the task running;
+  - `aria-review` reads gate exit codes the Bash tool does not show, and
+    stops before the security review while the accepted change is
+    uncommitted;
+  - the tool guard allows `mkdir` of the directory a territory lives in.
 - Model and token control: `lib/model-policy.mjs` fixes the model and
   effort of every agent and skill the plugin ships (`presenter` moves to
   Haiku, `orchestrate` to medium effort, `reality-check` to low).
