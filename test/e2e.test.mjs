@@ -140,6 +140,9 @@ test("a full run: plan, the owner's click, execute, review", async (t) => {
 		],
 	);
 	assert.deepEqual(reviewed.result.scope.files, ["src/lib/new.txt", "src/lib/second.txt"]);
+	// The review closes the run through the real controller.
+	assert.equal(reviewed.result.closed.state, "ready_for_review");
+	assert.equal(lead(root, ["run", "status", runId, "--json"]).json().state, "ready_for_review");
 
 	// The loop stops: the run waits for review.
 	assert.equal(lead(root, ["run", "select", runId]).code, 0);

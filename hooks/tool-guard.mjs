@@ -544,13 +544,15 @@ export function decide(payload, { root }) {
 // `Stop` never loops: after a continuation, or with no running task, it
 // hands control back; otherwise it asks for one continuation so the running
 // task is accepted or recorded as failed. Only the main session closes tasks.
+// A task a background workflow holds is closed by that workflow: the hook
+// cannot see workflows, so the reason says to end the turn and not to poll.
 export function decideStop(payload, { root }) {
 	if (payload.stop_hook_active || payload.agent_id) return null;
 	const { tasks } = activeTasks(root);
 	if (tasks.length === 0) return null;
 	return {
 		decision: "block",
-		reason: `task(s) still running: ${tasks.map((task) => `${task.task_id} (run ${task.runId})`).join(", ")}; run "aria run accept" or "aria run fail" before stopping.`,
+		reason: `task(s) still running: ${tasks.map((task) => `${task.task_id} (run ${task.runId})`).join(", ")}. If the aria-execute workflow is running it, end the turn: the workflow accepts or fails the task, and its completion notification wakes you; do not poll the run. Otherwise run "aria run accept" or "aria run fail" before stopping.`,
 	};
 }
 

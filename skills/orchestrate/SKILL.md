@@ -159,7 +159,9 @@ With `status: "failed"`, every finding carries `requirement`, `owner`,
 `expected`, `observed` and `reproduction`; without them it is prose that
 cannot be routed. A read-only auditor's `changed_files` is always empty.
 
-Keep each handoff in `.aria/handoffs/<run-id>-<task>.json`, then:
+Keep each handoff in `.aria/handoffs/<run-id>-<task>.json`, written with
+the Write tool (a heredoc goes through the user's shell, whose `cat` may be
+an alias), then:
 
 ```bash
 aria run accept <run-id> <task> .aria/handoffs/<run-id>-<task>.json
@@ -170,6 +172,10 @@ every changed file against `allowed_paths`, and runs the task's
 verification on a snapshot of the tree. A file outside the territory, a
 change missing from the handoff, or a red check refuses the task. It is the
 controller that decides, not you.
+
+Never edit a worker's handoff, not even a field name: it is the worker's
+evidence. If it is malformed, record the failure with `aria run fail` and
+dispatch the task again.
 
 ### 7–8. Verification and routing
 
@@ -210,6 +216,11 @@ plus the project's own closing commands (its build and full test suite).
 
 ### 12. Close out
 
+Once the gates pass and the final security review leaves nothing that
+blocks closing, `aria run close <run-id>` moves the run to
+`ready_for_review` (`aria-review` runs it itself). It refuses while a task
+is not accepted or the accepted change is not committed.
+
 Update `Status:` in the spec's three files to what actually exists, never
 optimistic; list any requirement left unverified, with the reason. Mark the
 draft pull request opened in step 5 **ready for review**; never open a new
@@ -233,11 +244,18 @@ capability: the Workflow tool is not offered, or a workflow returns
 `ok: false` with a `diagnosis`. Never because it seems simpler. The tool
 guard applies either way.
 
-Every workflow returns `tokens`, the output tokens the turn has spent so
-far; report it to the owner with the result. When the owner sets a budget,
-pass it to `aria-execute` as `tokenLimit`: no new round of tasks is
-dispatched once the turn has spent it, and the result says how many tasks
-are left. A round is never cut in half.
+Every workflow returns `tokens`, the output tokens it spent itself, and
+`turn_tokens`, the turn's total so far; report both to the owner with the
+result. When the owner sets a budget, pass it to `aria-execute` as
+`tokenLimit`: no new round of tasks is dispatched once the workflow has
+spent it, and the result says how many tasks are left. A round is never cut
+in half.
+
+Workflows run in the background. While one runs, end your turn: its
+completion notification wakes you. Do not poll the run with a monitor, a
+sleep loop or repeated `aria status`; every wake-up costs tokens. The stop
+hook asks once for a continuation while a task is `running`; when the
+workflow holds that task, the answer is to end the turn.
 
 The workflows' control steps run on the plugin's `controller` agent. It
 runs only the command it is given and returns the JSON. It is not a worker:

@@ -15,14 +15,16 @@ const WORKFLOWS = join(import.meta.dirname, "..", "..", "workflows");
 // agent that stopped. A throw inside a pipeline stage leaves null in its
 // slot, as the runtime does.
 // `tokensPerAgent` feeds the runtime's `budget`: every finished agent call
-// adds that many output tokens to `budget.spent()`.
-export async function runWorkflow(name, args, agentImpl, { tokensPerAgent = 1000 } = {}) {
+// adds that many output tokens to `budget.spent()`. `spentBefore` is what the
+// turn had already spent when the workflow started (the pool is shared with
+// the main loop).
+export async function runWorkflow(name, args, agentImpl, { tokensPerAgent = 1000, spentBefore = 0 } = {}) {
 	const split = splitWorkflow(readFileSync(join(WORKFLOWS, `${name}.js`), "utf8"));
 	if (split.error) throw new Error(split.error);
 	const calls = [];
 	const phases = [];
 	const logs = [];
-	let spent = 0;
+	let spent = spentBefore;
 	const budget = { total: null, spent: () => spent, remaining: () => Infinity };
 	const agent = async (prompt, options = {}) => {
 		calls.push({ prompt, ...options });

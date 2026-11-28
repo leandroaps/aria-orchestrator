@@ -180,7 +180,8 @@ In the project's own repository, `aria validate contracts` reports an agent
 without `model` or `effort`: it would run on the session's, possibly the
 most expensive. `aria validate workflows` reports an `agent()` call that
 names no model, directly or through a plugin agent. Every workflow returns
-the tokens the turn has spent, and `aria-execute` takes a `tokenLimit`
+the output tokens it spent itself (`tokens`) and the turn's total
+(`turn_tokens`), and `aria-execute` takes a `tokenLimit` on its own spend,
 after which it dispatches no new round.
 
 Spec templates live in [`templates/spec/`](templates/spec/). In a
